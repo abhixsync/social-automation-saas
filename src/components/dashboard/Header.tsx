@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -52,10 +53,12 @@ export default function Header({ title, user }: HeaderProps) {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuLabel className="font-normal">
-            <p className="font-medium text-sm">{user.name ?? 'Account'}</p>
-            <p className="text-xs text-gray-500 truncate">{user.email}</p>
-          </DropdownMenuLabel>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="font-normal">
+              <p className="font-medium text-sm">{user.name ?? 'Account'}</p>
+              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+            </DropdownMenuLabel>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem disabled className="text-gray-400 cursor-not-allowed">
             <User className="w-4 h-4 mr-2" />
