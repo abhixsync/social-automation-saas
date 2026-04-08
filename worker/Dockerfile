@@ -18,5 +18,6 @@ RUN npx prisma generate --schema=../prisma/schema.prisma
 COPY worker/src/ ./src/
 
 ENV NODE_ENV=production
+ENV NODE_PATH=/app/worker/node_modules
 
 CMD ["node_modules/.bin/tsx", "src/index.ts"]
