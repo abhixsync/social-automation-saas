@@ -221,7 +221,7 @@ function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link href="/auth/signin">
+          <Link href="/auth/login">
             <Button variant="ghost" size="sm" className="text-sm text-gray-600">
               Log in
             </Button>
@@ -264,7 +264,7 @@ function Footer() {
             <Link href="#pricing" className="text-sm text-gray-400 hover:text-gray-700">
               Pricing
             </Link>
-            <Link href="/auth/signin" className="text-sm text-gray-400 hover:text-gray-700">
+            <Link href="/auth/login" className="text-sm text-gray-400 hover:text-gray-700">
               Login
             </Link>
             <Link href="/auth/signup" className="text-sm text-gray-400 hover:text-gray-700">
