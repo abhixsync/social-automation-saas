@@ -1,0 +1,323 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1775634984079,
+  "projectRoot": "C:\\Work\\Learn\\social-automation-saas",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "next",
+        "version": "16.2.2",
+        "category": "fullstack"
+      },
+      {
+        "name": "react",
+        "version": "19.2.4",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "19.2.4",
+        "category": "frontend"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": null,
+    "lintCommand": "npm run lint",
+    "devCommand": "npm run dev",
+    "scripts": {
+      "dev": "next dev --turbopack",
+      "build": "next build",
+      "start": "next start",
+      "lint": "eslint",
+      "db:generate": "prisma generate",
+      "db:migrate": "prisma migrate dev",
+      "db:push": "prisma db push",
+      "db:seed": "ts-node prisma/seed.ts",
+      "db:studio": "prisma studio",
+      "db:setup": "prisma migrate dev && npm run db:seed",
+      "db:reset": "prisma migrate reset && npm run db:seed"
+    }
+  },
+  "conventions": {
+    "namingStyle": "camelCase",
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": "type-based"
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "public",
+      "src"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "prisma": {
+      "path": "prisma",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1775634984061,
+      "keyFiles": [
+        "schema.prisma",
+        "seed.ts"
+      ]
+    },
+    "public": {
+      "path": "public",
+      "purpose": "Public files",
+      "fileCount": 5,
+      "lastAccessed": 1775634984062,
+      "keyFiles": [
+        "file.svg",
+        "globe.svg",
+        "next.svg",
+        "vercel.svg",
+        "window.svg"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 1,
+      "lastAccessed": 1775634984066,
+      "keyFiles": [
+        "middleware.ts"
+      ]
+    },
+    "worker": {
+      "path": "worker",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1775634984067,
+      "keyFiles": [
+        "package.json",
+        "tsconfig.json"
+      ]
+    },
+    "src\\app": {
+      "path": "src\\app",
+      "purpose": "Application code",
+      "fileCount": 4,
+      "lastAccessed": 1775634984068,
+      "keyFiles": [
+        "favicon.ico",
+        "globals.css",
+        "layout.tsx"
+      ]
+    },
+    "src\\components": {
+      "path": "src\\components",
+      "purpose": "UI components",
+      "fileCount": 0,
+      "lastAccessed": 1775634984068,
+      "keyFiles": []
+    },
+    "src\\lib": {
+      "path": "src\\lib",
+      "purpose": "Library code",
+      "fileCount": 10,
+      "lastAccessed": 1775634984068,
+      "keyFiles": [
+        "ai.ts",
+        "app-mode.ts",
+        "auth.ts"
+      ]
+    },
+    "src\\types": {
+      "path": "src\\types",
+      "purpose": "Type definitions",
+      "fileCount": 1,
+      "lastAccessed": 1775634984068,
+      "keyFiles": [
+        "index.ts"
+      ]
+    },
+    "worker\\src": {
+      "path": "worker\\src",
+      "purpose": "Source code",
+      "fileCount": 1,
+      "lastAccessed": 1775634984068,
+      "keyFiles": [
+        "queues.ts"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src\\lib\\ai.ts",
+      "accessCount": 5,
+      "lastAccessed": 1775643186285,
+      "type": "file"
+    },
+    {
+      "path": "src\\app\\page.tsx",
+      "accessCount": 5,
+      "lastAccessed": 1775659189481,
+      "type": "file"
+    },
+    {
+      "path": "src\\app\\dashboard\\page.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1775658673187,
+      "type": "file"
+    },
+    {
+      "path": ".env",
+      "accessCount": 3,
+      "lastAccessed": 1775657795721,
+      "type": "file"
+    },
+    {
+      "path": "src\\components\\dashboard\\Sidebar.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1775659166875,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 2,
+      "lastAccessed": 1775635143776,
+      "type": "directory"
+    },
+    {
+      "path": "src\\app\\api\\billing\\webhook\\route.ts",
+      "accessCount": 2,
+      "lastAccessed": 1775643156524,
+      "type": "file"
+    },
+    {
+      "path": "src\\lib\\stripe.ts",
+      "accessCount": 2,
+      "lastAccessed": 1775643158590,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 2,
+      "lastAccessed": 1775657676204,
+      "type": "file"
+    },
+    {
+      "path": "prisma\\schema.prisma",
+      "accessCount": 2,
+      "lastAccessed": 1775658116460,
+      "type": "file"
+    },
+    {
+      "path": "src\\lib\\linkedin.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775634997933,
+      "type": "file"
+    },
+    {
+      "path": "src\\types\\index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775634998372,
+      "type": "file"
+    },
+    {
+      "path": "src\\lib\\encryption.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775634998684,
+      "type": "file"
+    },
+    {
+      "path": "worker\\src\\lib\\credits.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775635099923,
+      "type": "file"
+    },
+    {
+      "path": "worker\\src\\lib\\ai.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775635108088,
+      "type": "file"
+    },
+    {
+      "path": "worker\\src\\lib\\linkedin.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775635113019,
+      "type": "file"
+    },
+    {
+      "path": "worker\\src\\lib\\email.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775635118426,
+      "type": "file"
+    },
+    {
+      "path": "worker\\src\\jobs\\check-expiring-tokens.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775635129002,
+      "type": "file"
+    },
+    {
+      "path": "worker\\src\\index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775635134410,
+      "type": "file"
+    },
+    {
+      "path": "worker\\Dockerfile",
+      "accessCount": 1,
+      "lastAccessed": 1775635136990,
+      "type": "file"
+    },
+    {
+      "path": "src\\app\\api\\posts\\[id]\\approve\\route.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775643101108,
+      "type": "file"
+    },
+    {
+      "path": "src\\app\\dashboard\\posts\\page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775643101992,
+      "type": "file"
+    },
+    {
+      "path": ".env.example",
+      "accessCount": 1,
+      "lastAccessed": 1775650563943,
+      "type": "file"
+    },
+    {
+      "path": "src\\components\\shared\\Logo.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775659143325,
+      "type": "file"
+    },
+    {
+      "path": "src\\app\\icon.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775659155586,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

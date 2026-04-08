@@ -1,0 +1,179 @@
+import type { Job } from 'bullmq'
+import { prisma } from '../lib/prisma.js'
+import { generatePost, pickTopic, countWords } from '../lib/ai.js'
+import { postToLinkedIn } from '../lib/linkedin.js'
+import { wordsToCredits } from '../lib/credits.js'
+
+interface JobData {
+  userId: string
+  accountId: string
+}
+
+export async function generateAndPost(job: Job<JobData>): Promise<void> {
+  const { userId, accountId } = job.data
+
+  // 1. Load user + account + preferences
+  const [user, account, prefs] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        plan: true,
+        aiCreditsTotal: true,
+        aiCreditsUsed: true,
+      },
+    }),
+    prisma.linkedInAccount.findUnique({
+      where: { id: accountId },
+      select: { id: true, sub: true, accessTokenEncrypted: true, expiresAt: true, isActive: true },
+    }),
+    prisma.userPreferences.findUnique({
+      where: { userId },
+      select: {
+        niche: true,
+        tone: true,
+        contentPillars: true,
+        customPromptSuffix: true,
+        approvalMode: true,
+      },
+    }),
+  ])
+
+  if (!user || !account || !account.isActive) {
+    console.log(`[worker] Skipping job — user or account not found/inactive`)
+    return
+  }
+
+  // 2. Check token expiry
+  if (new Date(account.expiresAt) <= new Date()) {
+    await prisma.post.create({
+      data: {
+        userId,
+        linkedInAccountId: accountId,
+        topic: 'N/A',
+        generatedContent: '',
+        wordCount: 0,
+        creditsUsed: 0,
+        status: 'failed',
+        aiModel: 'llama_3_3_70b',
+        errorMessage: 'LinkedIn access token expired. Please reconnect your account.',
+      },
+    })
+    console.warn(`[worker] Token expired for account ${accountId}`)
+    return
+  }
+
+  // 3. Check credits
+  const remaining = user.aiCreditsTotal - user.aiCreditsUsed
+  if (remaining <= 0) {
+    console.log(`[worker] User ${userId} has no credits remaining`)
+    return
+  }
+
+  // 4. Pick topic
+  const pillars = prefs?.contentPillars ?? []
+  const topic = pickTopic(pillars)
+  const niche = prefs?.niche ?? 'tech professional'
+  const tone = prefs?.tone ?? 'professional'
+
+  // 5. Generate post
+  let content: string
+  let wordCount: number
+  let model: string
+
+  try {
+    const result = await generatePost(
+      topic,
+      user.plan as Parameters<typeof generatePost>[1],
+      niche,
+      tone,
+      prefs?.customPromptSuffix,
+    )
+    content = result.content
+    wordCount = result.wordCount
+    model = result.model
+  } catch (err) {
+    console.error(`[worker] AI generation failed:`, err)
+    await prisma.post.create({
+      data: {
+        userId,
+        linkedInAccountId: accountId,
+        topic,
+        generatedContent: '',
+        wordCount: 0,
+        creditsUsed: 0,
+        status: 'failed',
+        aiModel: 'llama_3_3_70b',
+        errorMessage: err instanceof Error ? err.message : 'AI generation failed',
+      },
+    })
+    return
+  }
+
+  const creditsUsed = wordsToCredits(wordCount)
+
+  // 6. Approval mode: save as pending_approval
+  if (prefs?.approvalMode) {
+    await prisma.post.create({
+      data: {
+        userId,
+        linkedInAccountId: accountId,
+        topic,
+        generatedContent: content,
+        wordCount,
+        creditsUsed,
+        status: 'pending_approval',
+        aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+        scheduledFor: new Date(),
+      },
+    })
+    // Deduct credits even for drafts (reserved)
+    await prisma.user.update({
+      where: { id: userId },
+      data: { aiCreditsUsed: { increment: creditsUsed } },
+    })
+    console.log(`[worker] Post saved for approval — user ${userId}`)
+    return
+  }
+
+  // 7. Post to LinkedIn
+  try {
+    await postToLinkedIn(account.accessTokenEncrypted, account.sub, content)
+
+    await prisma.post.create({
+      data: {
+        userId,
+        linkedInAccountId: accountId,
+        topic,
+        generatedContent: content,
+        wordCount,
+        creditsUsed,
+        status: 'published',
+        aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+        publishedAt: new Date(),
+      },
+    })
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { aiCreditsUsed: { increment: creditsUsed } },
+    })
+
+    console.log(`[worker] ✅ Published post for user ${userId}`)
+  } catch (err) {
+    console.error(`[worker] LinkedIn post failed:`, err)
+    await prisma.post.create({
+      data: {
+        userId,
+        linkedInAccountId: accountId,
+        topic,
+        generatedContent: content,
+        wordCount,
+        creditsUsed: 0,
+        status: 'failed',
+        aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+        errorMessage: err instanceof Error ? err.message : 'LinkedIn post failed',
+      },
+    })
+  }
+}
