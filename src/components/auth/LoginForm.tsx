@@ -53,7 +53,7 @@ export default function LoginForm() {
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Welcome back</CardTitle>
-        <CardDescription>Sign in to your Cadence account</CardDescription>
+        <CardDescription>Sign in to your Crescova account</CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">

@@ -39,7 +39,7 @@ function HeroSection() {
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-gray-500">
-          Cadence generates and posts AI-written content to LinkedIn on your schedule.
+          Crescova generates and posts AI-written content to LinkedIn on your schedule.
           Set it up once, grow your presence every day.
         </p>
 
@@ -84,7 +84,7 @@ const features = [
     ),
     title: "AI Content Generation",
     description:
-      "Groq & Claude models write posts in your voice. Set your niche, tone, and content pillars — Cadence handles the rest.",
+      "Groq & Claude models write posts in your voice. Set your niche, tone, and content pillars — Crescova handles the rest.",
   },
   {
     icon: (
@@ -120,7 +120,7 @@ function FeaturesSection() {
             Built for consistent creators
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base text-gray-500">
-            Cadence takes care of the consistency so you can focus on the strategy.
+            Crescova takes care of the consistency so you can focus on the strategy.
           </p>
         </div>
 
@@ -146,10 +146,10 @@ function FeaturesSection() {
 // ─── How it works ─────────────────────────────────────────────────────────────
 
 const steps = [
-  { num: "01", title: "Connect your LinkedIn account", desc: "Securely link your LinkedIn profile with OAuth. Cadence never stores your password." },
-  { num: "02", title: "Set your preferences", desc: "Tell Cadence your niche, tone of voice, and the topics you want to post about." },
-  { num: "03", title: "Choose a schedule", desc: "Pick the days and times that work for you. Cadence adapts to your timezone." },
-  { num: "04", title: "Posts publish automatically", desc: "Sit back. Cadence generates and publishes posts on your behalf, every single day." },
+  { num: "01", title: "Connect your LinkedIn account", desc: "Securely link your LinkedIn profile with OAuth. Crescova never stores your password." },
+  { num: "02", title: "Set your preferences", desc: "Tell Crescova your niche, tone of voice, and the topics you want to post about." },
+  { num: "03", title: "Choose a schedule", desc: "Pick the days and times that work for you. Crescova adapts to your timezone." },
+  { num: "04", title: "Posts publish automatically", desc: "Sit back. Crescova generates and publishes posts on your behalf, every single day." },
 ];
 
 function HowItWorksSection() {
@@ -187,8 +187,28 @@ function HowItWorksSection() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Crescova',
+    description:
+      'AI-powered LinkedIn post automation. Schedule, generate, and publish posts automatically.',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+      description: 'Free plan available',
+    },
+  }
+
   return (
     <div className="flex min-h-full flex-col bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar />
       <main className="flex-1">
         <HeroSection />
@@ -247,14 +267,9 @@ function Footer() {
     <footer className="border-t border-gray-100 bg-white">
       <div className="mx-auto max-w-5xl px-6 py-12">
         <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex size-7 items-center justify-center rounded-lg bg-indigo-600 text-xs font-bold text-white">
-              C
-            </span>
-            <div>
-              <span className="text-sm font-semibold text-gray-900">Cadence</span>
-              <p className="text-xs text-gray-400">Grow your LinkedIn, automatically.</p>
-            </div>
+          <div>
+            <Logo size="sm" />
+            <p className="text-xs text-gray-400 mt-1">Grow your LinkedIn, automatically.</p>
           </div>
 
           <nav className="flex items-center gap-6">
@@ -275,7 +290,7 @@ function Footer() {
 
         <div className="mt-8 border-t border-gray-100 pt-6 text-center">
           <p className="text-xs text-gray-400">
-            © 2025 Cadence. Built for LinkedIn creators.
+            © 2025 Crescova. Built for LinkedIn creators.
           </p>
         </div>
       </div>

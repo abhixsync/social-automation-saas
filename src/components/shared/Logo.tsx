@@ -20,14 +20,14 @@ export function LogoIcon({ size = 36 }: { size?: number }) {
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <linearGradient id="cadence-grad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+        <linearGradient id="crescova-grad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#6366F1" />
           <stop offset="100%" stopColor="#4338CA" />
         </linearGradient>
       </defs>
 
       {/* Rounded square background */}
-      <rect width="40" height="40" rx="10" fill="url(#cadence-grad)" />
+      <rect width="40" height="40" rx="10" fill="url(#crescova-grad)" />
 
       {/* Sine wave — the "cadence" mark */}
       <path
@@ -51,7 +51,7 @@ export default function Logo({ variant = 'full', size = 'md', className = '' }: 
     <div className={`flex items-center gap-2.5 ${className}`}>
       <LogoIcon size={icon} />
       <span className={`font-semibold tracking-tight text-gray-900 ${text}`}>
-        Cadence
+        Crescova
       </span>
     </div>
   )

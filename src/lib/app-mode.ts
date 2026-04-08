@@ -91,7 +91,7 @@ export function resolveAppMode(settings: Record<string, string>): AppMode {
   return 'active'
 }
 
-// Cadence app paths
+// Crescova app paths
 const APP_PATH_PREFIXES = ['/dashboard', '/billing', '/settings']
 const AUTH_PATH_PREFIXES = ['/auth']
 

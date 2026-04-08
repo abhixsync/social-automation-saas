@@ -22,7 +22,7 @@ export default async function MaintenancePage() {
       <div className="max-w-md w-full flex flex-col items-center">
         <div className="mb-8">
           <span className="text-3xl font-bold text-white tracking-tight">
-            Cadence
+            Crescova
           </span>
         </div>
         {config.icon && (
@@ -35,7 +35,7 @@ export default async function MaintenancePage() {
           {subtitle}
         </p>
         {until && <CountdownTimer until={until} />}
-        <p className="mt-12 text-xs text-slate-600">Cadence</p>
+        <p className="mt-12 text-xs text-slate-600">Crescova</p>
       </div>
     </div>
   );

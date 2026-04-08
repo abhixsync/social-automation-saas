@@ -42,7 +42,7 @@ export default function MobileNav({ credits, user }: MobileNavProps) {
           <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
             <span className="text-white text-xs font-bold">C</span>
           </div>
-          <span className="text-base font-semibold text-gray-900">Cadence</span>
+          <span className="text-base font-semibold text-gray-900">Crescova</span>
         </div>
         <button
           onClick={() => setOpen(true)}
@@ -66,7 +66,7 @@ export default function MobileNav({ credits, user }: MobileNavProps) {
                 <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
                   <span className="text-white text-xs font-bold">C</span>
                 </div>
-                <span className="text-base font-semibold text-gray-900">Cadence</span>
+                <span className="text-base font-semibold text-gray-900">Crescova</span>
               </div>
               <button
                 onClick={() => setOpen(false)}

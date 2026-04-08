@@ -59,7 +59,7 @@ export default async function DashboardPage() {
     {
       done: hasAccount,
       title: 'Connect your LinkedIn account',
-      description: 'Link your LinkedIn so Cadence can post on your behalf.',
+      description: 'Link your LinkedIn so Crescova can post on your behalf.',
       href: '/dashboard/accounts',
       cta: 'Connect LinkedIn',
     },
@@ -129,7 +129,7 @@ export default async function DashboardPage() {
           <CardContent className="p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h2 className="text-base font-semibold text-gray-900">Get started with Cadence</h2>
+                <h2 className="text-base font-semibold text-gray-900">Get started with Crescova</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
                   Complete these 3 steps to start auto-posting to LinkedIn.
                 </p>
