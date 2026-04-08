@@ -12,6 +12,11 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') ?? '20', 10)))
   const skip = (page - 1) * limit
 
+  const VALID_STATUSES = new Set(['draft', 'pending_approval', 'approved', 'published', 'failed', 'skipped'])
+  if (status && !VALID_STATUSES.has(status)) {
+    return NextResponse.json({ error: 'Invalid status filter' }, { status: 400 })
+  }
+
   const where = {
     userId: session.user.id,
     ...(status ? { status: status as never } : {}),

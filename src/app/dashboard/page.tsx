@@ -17,7 +17,7 @@ export default async function DashboardPage() {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [publishedThisMonth, linkedInAccounts, recentPosts, preferences, activeSchedule] = await Promise.all([
+  const [publishedThisMonth, linkedInAccounts, recentPosts, preferences, activeSchedule, totalPosts] = await Promise.all([
     prisma.post.count({
       where: { userId, status: 'published', publishedAt: { gte: startOfMonth } },
     }),
@@ -47,6 +47,7 @@ export default async function DashboardPage() {
     prisma.postSchedule.findFirst({
       where: { userId, isActive: true },
     }),
+    prisma.post.count({ where: { userId } }),
   ])
 
   // Onboarding steps
@@ -112,7 +113,7 @@ export default async function DashboardPage() {
     },
     {
       label: 'Total Posts',
-      value: await prisma.post.count({ where: { userId } }),
+      value: totalPosts,
       icon: FileText,
       color: 'text-violet-600',
       bg: 'bg-violet-50',

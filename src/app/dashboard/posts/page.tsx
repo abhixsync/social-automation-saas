@@ -86,14 +86,16 @@ export default function PostsPage() {
     }
   }, [])
 
-  useEffect(() => {
-    setPage(1)
-    fetchPosts(activeTab, 1)
-  }, [activeTab, fetchPosts])
-
+  // Single effect: fires when page or tab changes. Tab change resets page (below),
+  // which triggers this effect — avoids the double-fetch race condition.
   useEffect(() => {
     fetchPosts(activeTab, page)
   }, [page, activeTab, fetchPosts])
+
+  function changeTab(tab: string) {
+    setActiveTab(tab)
+    setPage(1)
+  }
 
   async function handleApprove(post: Post) {
     setActionLoading((p) => ({ ...p, [post.id]: 'approve' }))
@@ -160,7 +162,7 @@ export default function PostsPage() {
         <p className="text-sm text-gray-500 mt-1">Manage your AI-generated LinkedIn posts</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={changeTab}>
         <TabsList className="mb-6">
           {STATUS_TABS.map((t) => (
             <TabsTrigger key={t.value} value={t.value}>
@@ -216,9 +218,11 @@ export default function PostsPage() {
                             {post.publishedAt && (
                               <span>
                                 Published{' '}
-                                {new Date(post.publishedAt).toLocaleDateString('en-IN', {
+                                {new Date(post.publishedAt!).toLocaleString('en-IN', {
                                   day: 'numeric',
                                   month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
                                 })}
                               </span>
                             )}
@@ -321,10 +325,10 @@ export default function PostsPage() {
           <DialogHeader>
             <DialogTitle className="text-base">{viewPost?.topic}</DialogTitle>
             <DialogDescription>
-              {new Date(viewPost?.createdAt ?? '').toLocaleString('en-IN', {
+              {viewPost ? new Date(viewPost.createdAt).toLocaleString('en-IN', {
                 day: 'numeric', month: 'short', year: 'numeric',
                 hour: '2-digit', minute: '2-digit',
-              })} · {viewPost?.wordCount} words · {viewPost?.creditsUsed} credits
+              }) : ''} · {viewPost?.wordCount} words · {viewPost?.creditsUsed} credits
             </DialogDescription>
           </DialogHeader>
           <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">

@@ -44,9 +44,8 @@ export async function POST(
   const tone = prefs?.tone ?? 'professional'
   const customPromptSuffix = prefs?.customPromptSuffix ?? null
 
-  // Check credits
-  const remaining = user.aiCreditsTotal - user.aiCreditsUsed
-  if (remaining <= 0) {
+  // Early exit if clearly out of credits (non-atomic fast path)
+  if (user.aiCreditsTotal - user.aiCreditsUsed <= 0) {
     return NextResponse.json(
       { error: 'Insufficient credits. Please upgrade your plan or purchase a top-up.' },
       { status: 402 },
@@ -63,25 +62,44 @@ export async function POST(
     )
 
     const creditsUsed = wordsToCredits(wordCount)
+    // Net cost: refund old generation's credits, charge new ones
+    const netCost = creditsUsed - post.creditsUsed
 
-    const [updated] = await prisma.$transaction([
-      prisma.post.update({
+    const updated = await prisma.$transaction(async (tx) => {
+      // Atomic check + deduct: only proceed if user still has enough credits
+      if (netCost > 0) {
+        const result = await tx.user.updateMany({
+          where: {
+            id: session.user.id,
+            aiCreditsUsed: { lte: user.aiCreditsTotal - netCost },
+          },
+          data: { aiCreditsUsed: { increment: netCost } },
+        })
+        if (result.count === 0) {
+          throw Object.assign(new Error('Insufficient credits'), { code: 'INSUFFICIENT_CREDITS' })
+        }
+      } else {
+        // Net refund — always safe to apply
+        await tx.user.update({
+          where: { id: session.user.id },
+          data: { aiCreditsUsed: { increment: netCost } },
+        })
+      }
+
+      return tx.post.update({
         where: { id },
-        data: {
-          generatedContent: content,
-          wordCount,
-          creditsUsed,
-          aiModel: model as never,
-        },
-      }),
-      prisma.user.update({
-        where: { id: session.user.id },
-        data: { aiCreditsUsed: { increment: creditsUsed } },
-      }),
-    ])
+        data: { generatedContent: content, wordCount, creditsUsed, aiModel: model as never },
+      })
+    })
 
     return NextResponse.json({ post: updated })
   } catch (err) {
+    if ((err as { code?: string }).code === 'INSUFFICIENT_CREDITS') {
+      return NextResponse.json(
+        { error: 'Insufficient credits. Please upgrade your plan or purchase a top-up.' },
+        { status: 402 },
+      )
+    }
     console.error('[posts/regenerate]', err)
     return NextResponse.json({ error: 'Failed to regenerate post' }, { status: 500 })
   }

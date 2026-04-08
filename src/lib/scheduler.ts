@@ -25,44 +25,26 @@ export function getPostQueue(): Queue {
 
 // ─── Cron generation ──────────────────────────────────────────────────────────
 
-/**
- * Convert a time string ("HH:MM") from a user timezone to UTC hour/minute.
- */
-function toUtcTime(timeStr: string, timezone: string): { hour: number; minute: number } {
-  const [h, m] = timeStr.split(':').map(Number)
-  const now = new Date()
-  // Build a date that represents "today at HH:MM in the given timezone"
-  const localIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
-  // Parse as local timezone using Intl trick
-  const utcMs =
-    new Date(localIso).getTime() -
-    (new Date(new Date(localIso).toLocaleString('en-US', { timeZone: timezone })).getTime() -
-      new Date(new Date(localIso).toLocaleString('en-US', { timeZone: 'UTC' })).getTime())
-  const utcDate = new Date(utcMs)
-  return { hour: utcDate.getUTCHours(), minute: utcDate.getUTCMinutes() }
-}
-
 interface TimeSlot {
   cronExpr: string
   slotKey: string // unique key for the job scheduler
 }
 
 /**
- * Generate BullMQ cron expressions (UTC) for each time slot.
- * Returns one entry per time, so multiple schedulers handle multiple posting times.
+ * Generate BullMQ cron expressions in local time for each time slot.
+ * BullMQ's `tz` option handles DST automatically — no manual UTC conversion needed.
  */
 export function buildTimeSlots(
   times: string[],
   daysOfWeek: number[],
-  timezone: string,
 ): TimeSlot[] {
   if (!times.length || !daysOfWeek.length) return []
   const days = daysOfWeek.join(',')
 
   return times.map((time) => {
-    const { hour, minute } = toUtcTime(time, timezone)
-    const cronExpr = `${minute} ${hour} * * ${days}`
-    const slotKey = `${String(hour).padStart(2, '0')}${String(minute).padStart(2, '0')}`
+    const [h, m] = time.split(':').map(Number)
+    const cronExpr = `${m} ${h} * * ${days}`
+    const slotKey = `${String(h).padStart(2, '0')}${String(m).padStart(2, '0')}`
     return { cronExpr, slotKey }
   })
 }
@@ -77,17 +59,17 @@ export async function upsertUserSchedule(
   timezone: string,
 ): Promise<void> {
   const queue = getPostQueue()
-  const slots = buildTimeSlots(times, daysOfWeek, timezone)
+  const slots = buildTimeSlots(times, daysOfWeek)
 
   // Remove all existing schedulers for this user+account first
   await removeUserSchedule(userId, accountId)
 
-  // Add new schedulers
+  // Add new schedulers — pass user timezone so BullMQ handles DST automatically
   for (const slot of slots) {
     const schedulerId = `user-${userId}-account-${accountId}-slot-${slot.slotKey}`
     await queue.upsertJobScheduler(
       schedulerId,
-      { pattern: slot.cronExpr, tz: 'UTC' },
+      { pattern: slot.cronExpr, tz: timezone },
       {
         name: 'generate-and-post',
         data: { userId, accountId },

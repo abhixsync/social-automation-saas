@@ -51,12 +51,19 @@ export async function POST(
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error'
 
-    await prisma.post.update({
-      where: { id },
-      data: { status: 'failed', errorMessage },
-    })
+    // Mark failed + refund credits atomically
+    await prisma.$transaction([
+      prisma.post.update({
+        where: { id },
+        data: { status: 'failed', errorMessage },
+      }),
+      prisma.user.update({
+        where: { id: session.user.id },
+        data: { aiCreditsUsed: { decrement: post.creditsUsed } },
+      }),
+    ])
 
     console.error('[posts/approve]', err)
-    return NextResponse.json({ error: 'Failed to post to LinkedIn', details: errorMessage }, { status: 502 })
+    return NextResponse.json({ error: 'Failed to post to LinkedIn' }, { status: 502 })
   }
 }

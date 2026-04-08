@@ -112,26 +112,27 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
 
   const creditsUsed = wordsToCredits(wordCount)
 
-  // 6. Approval mode: save as pending_approval
+  // 6. Approval mode: save as pending_approval (atomic: post + credit deduction)
   if (prefs?.approvalMode) {
-    await prisma.post.create({
-      data: {
-        userId,
-        linkedInAccountId: accountId,
-        topic,
-        generatedContent: content,
-        wordCount,
-        creditsUsed,
-        status: 'pending_approval',
-        aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
-        scheduledFor: new Date(),
-      },
-    })
-    // Deduct credits even for drafts (reserved)
-    await prisma.user.update({
-      where: { id: userId },
-      data: { aiCreditsUsed: { increment: creditsUsed } },
-    })
+    await prisma.$transaction([
+      prisma.post.create({
+        data: {
+          userId,
+          linkedInAccountId: accountId,
+          topic,
+          generatedContent: content,
+          wordCount,
+          creditsUsed,
+          status: 'pending_approval',
+          aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+          scheduledFor: new Date(),
+        },
+      }),
+      prisma.user.update({
+        where: { id: userId },
+        data: { aiCreditsUsed: { increment: creditsUsed } },
+      }),
+    ])
     console.log(`[worker] Post saved for approval — user ${userId}`)
     return
   }
@@ -140,24 +141,26 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   try {
     await postToLinkedIn(account.accessTokenEncrypted, account.sub, content)
 
-    await prisma.post.create({
-      data: {
-        userId,
-        linkedInAccountId: accountId,
-        topic,
-        generatedContent: content,
-        wordCount,
-        creditsUsed,
-        status: 'published',
-        aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
-        publishedAt: new Date(),
-      },
-    })
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { aiCreditsUsed: { increment: creditsUsed } },
-    })
+    // Atomic: post record + credit deduction together
+    await prisma.$transaction([
+      prisma.post.create({
+        data: {
+          userId,
+          linkedInAccountId: accountId,
+          topic,
+          generatedContent: content,
+          wordCount,
+          creditsUsed,
+          status: 'published',
+          aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+          publishedAt: new Date(),
+        },
+      }),
+      prisma.user.update({
+        where: { id: userId },
+        data: { aiCreditsUsed: { increment: creditsUsed } },
+      }),
+    ])
 
     console.log(`[worker] ✅ Published post for user ${userId}`)
   } catch (err) {

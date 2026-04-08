@@ -63,10 +63,11 @@ export default function Header({ title, user }: HeaderProps) {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            className="text-red-600 focus:text-red-600 focus:bg-red-50"
-            onSelect={async () => {
-              await signOut({ redirect: false })
-              window.location.href = '/auth/login'
+            className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
+            onClick={() => {
+              signOut({ redirect: false }).then(() => {
+                window.location.href = '/auth/login'
+              })
             }}
           >
             <LogOut className="w-4 h-4 mr-2" />

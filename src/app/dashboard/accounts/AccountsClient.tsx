@@ -85,7 +85,7 @@ export default function AccountsClient({ accounts: initial, maxAccounts, plan, c
     else if (error === 'invalid_state') toast.error('OAuth state mismatch. Please try again.')
     else if (error === 'token_exchange') toast.error('Failed to connect LinkedIn. Please try again.')
     else if (error) toast.error('Something went wrong. Please try again.')
-  }, [])
+  }, [connected, error])
 
   const canAdd = accounts.length < maxAccounts
 

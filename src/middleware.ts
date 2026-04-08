@@ -3,6 +3,7 @@
 export const runtime = 'nodejs'
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 import { resolveAppMode, isPathLocked, MODE_CONFIG } from '@/lib/app-mode'
 import type { AppMode } from '@/lib/app-mode'
 
@@ -89,17 +90,15 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ── Auth guard (Phase 2: NextAuth session check added here) ──────────────
-  // Placeholder — session logic will be wired up in Phase 2.
-  // For now: protect dashboard routes by checking the NextAuth session cookie.
+  // ── Auth guard — validate JWT, not just cookie presence ─────────────────
   const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p))
   const isAuthRoute = AUTH_PATHS.some((p) => pathname.startsWith(p))
 
-  // NextAuth v5 sets a session cookie named by NEXTAUTH_SECRET-derived key.
-  // We'll do full session validation in Phase 2; for now just check cookie presence.
-  const hasSession =
-    request.cookies.has('authjs.session-token') ||
-    request.cookies.has('__Secure-authjs.session-token')
+  const token = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET,
+  })
+  const hasSession = !!token
 
   if (isProtected && !hasSession) {
     const loginUrl = new URL('/auth/login', request.url)

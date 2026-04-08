@@ -11,7 +11,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { quantity = 1 } = await req.json().catch(() => ({}))
+    const body = await req.json().catch(() => ({}))
+    const rawQty = Number(body.quantity ?? 1)
+    if (!Number.isInteger(rawQty) || rawQty < 1 || rawQty > 10) {
+      return NextResponse.json({ error: 'quantity must be an integer between 1 and 10' }, { status: 400 })
+    }
+    const quantity = rawQty
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },

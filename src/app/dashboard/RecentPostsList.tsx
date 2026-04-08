@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { CheckCircle, Eye, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -40,8 +41,8 @@ function statusLabel(status: string) {
   }
 }
 
-export default function RecentPostsList({ posts: initial }: { posts: RecentPost[] }) {
-  const [posts, setPosts] = useState(initial)
+export default function RecentPostsList({ posts }: { posts: RecentPost[] }) {
+  const router = useRouter()
   const [viewPost, setViewPost] = useState<RecentPost | null>(null)
   const [approving, setApproving] = useState<string | null>(null)
 
@@ -52,7 +53,7 @@ export default function RecentPostsList({ posts: initial }: { posts: RecentPost[
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed to approve')
       toast.success('Post approved and published to LinkedIn!')
-      setPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, status: 'published' } : p))
+      router.refresh() // re-render server components to update credits + stats
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to approve')
     } finally {
@@ -121,7 +122,8 @@ export default function RecentPostsList({ posts: initial }: { posts: RecentPost[
               {statusLabel(viewPost?.status ?? '')}
             </span>
             {viewPost?.status === 'pending_approval' && (
-              <Button size="sm" onClick={() => { handleApprove(viewPost!); setViewPost(null) }}
+              <Button size="sm"
+                onClick={() => { const p = viewPost; setViewPost(null); handleApprove(p) }}
                 disabled={!!approving}
                 className="text-xs bg-indigo-600 hover:bg-indigo-700">
                 <CheckCircle className="w-3 h-3 mr-1" />Approve & Publish

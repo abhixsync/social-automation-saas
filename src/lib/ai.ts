@@ -98,10 +98,10 @@ export async function generatePost(
 
 function sanitizeForLinkedIn(text: string): string {
   return text
-    .replace(/\*\*(.*?)\*\*/g, '$1') // remove **bold**
-    .replace(/\*(.*?)\*/g, '$1')     // remove *italic*
-    .replace(/#{1,6}\s/g, '')         // remove markdown headings
-    .replace(/`{1,3}[^`]*`{1,3}/g, '') // remove code blocks
+    .replace(/\*\*(.*?)\*\*/g, '$1')          // **bold** → content
+    .replace(/(?<!\w)\*(.*?)\*(?!\w)/g, '$1') // *italic* → content (not mid-word like 5*3*2)
+    .replace(/^#{1,6}\s/gm, '')               // # headings at line start only
+    .replace(/`+([^`]+)`+/g, '$1')            // `code` → content (preserve the term)
     .trim()
 }
 

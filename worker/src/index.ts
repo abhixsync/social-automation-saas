@@ -29,15 +29,28 @@ async function runDailyChecks(): Promise<void> {
   }
 }
 
-// Run once on startup, then every 24 hours
+// Run once on startup, then schedule at next midnight to avoid drift
 runDailyChecks()
-const dailyTimer = setInterval(runDailyChecks, 24 * 60 * 60 * 1000)
+
+function scheduleNextDailyCheck(): NodeJS.Timeout {
+  const now = new Date()
+  const nextMidnight = new Date(now)
+  nextMidnight.setDate(now.getDate() + 1)
+  nextMidnight.setHours(0, 0, 0, 0)
+  const msUntilMidnight = nextMidnight.getTime() - now.getTime()
+  return setTimeout(() => {
+    runDailyChecks()
+    scheduleNextDailyCheck()
+  }, msUntilMidnight)
+}
+
+const dailyTimer = scheduleNextDailyCheck()
 
 // ─── Graceful shutdown ────────────────────────────────────────────────────────
 
 async function shutdown(signal: string): Promise<void> {
   console.log(`[worker] ${signal} received — shutting down gracefully`)
-  clearInterval(dailyTimer)
+  clearTimeout(dailyTimer)
   await worker.close()
   process.exit(0)
 }

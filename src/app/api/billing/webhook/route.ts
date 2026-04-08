@@ -28,21 +28,32 @@ export async function POST(req: NextRequest) {
         if (!userId) break
 
         if (session.mode === 'payment') {
-          // Top-up credits purchase
+          // Top-up credits purchase — atomic to prevent duplicate credits on webhook retry
           const credits = parseInt(session.metadata?.credits ?? '0', 10)
           if (credits > 0) {
             const amount = session.amount_total ?? 0
             const currency = (session.currency?.toUpperCase() ?? 'INR') as Currency
-            await addTopupCredits(userId, credits)
-            await prisma.creditTopup.create({
-              data: {
-                userId,
-                credits,
-                amount,
-                currency,
-                stripePaymentIntentId: session.payment_intent as string,
-              },
-            })
+            try {
+              await prisma.$transaction([
+                prisma.user.update({
+                  where: { id: userId },
+                  data: { aiCreditsTotal: { increment: credits } },
+                }),
+                prisma.creditTopup.create({
+                  data: {
+                    userId,
+                    credits,
+                    amount,
+                    currency,
+                    stripePaymentIntentId: session.payment_intent as string,
+                  },
+                }),
+              ])
+            } catch (txErr: unknown) {
+              // P2002 = unique constraint on stripePaymentIntentId — already processed
+              if ((txErr as { code?: string }).code === 'P2002') break
+              throw txErr
+            }
           }
         }
         // Subscription mode handled by customer.subscription.created below

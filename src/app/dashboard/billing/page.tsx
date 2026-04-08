@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { PLAN_CONFIG, TOPUP_CREDITS, TOPUP_PRICE_INR, TOPUP_PRICE_USD } from '@/types'
 import type { Plan } from '@/generated/prisma/enums'
@@ -30,8 +31,14 @@ export default async function BillingPage({
   const params = await searchParams
   const currentPlan = session.user.plan as Plan
   const currency = session.user.currency
-  const creditsUsed = session.user.aiCreditsUsed
-  const creditsTotal = session.user.aiCreditsTotal
+
+  // Fetch fresh credits from DB — JWT is stale after worker deducts credits
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { aiCreditsUsed: true, aiCreditsTotal: true },
+  })
+  const creditsUsed = dbUser?.aiCreditsUsed ?? session.user.aiCreditsUsed
+  const creditsTotal = dbUser?.aiCreditsTotal ?? session.user.aiCreditsTotal
   const creditsPct = creditsTotal > 0 ? Math.min(100, (creditsUsed / creditsTotal) * 100) : 0
   const currentConfig = PLAN_CONFIG[currentPlan]
 

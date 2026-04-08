@@ -11,8 +11,6 @@ export interface PlanConfig {
   model: AIModel
   priceINR: number          // monthly price in INR (0 = free)
   priceUSD: number          // monthly price in USD (0 = free)
-  stripePriceIdINR: string | null
-  stripePriceIdUSD: string | null
 }
 
 export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
@@ -23,8 +21,6 @@ export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
     model: 'llama_3_1_8b',
     priceINR: 0,
     priceUSD: 0,
-    stripePriceIdINR: null,
-    stripePriceIdUSD: null,
   },
   starter: {
     name: 'Starter',
@@ -33,8 +29,6 @@ export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
     model: 'llama_3_3_70b',
     priceINR: 499,
     priceUSD: 6,
-    stripePriceIdINR: process.env.STRIPE_STARTER_PRICE_INR ?? null,
-    stripePriceIdUSD: process.env.STRIPE_STARTER_PRICE_USD ?? null,
   },
   growth: {
     name: 'Growth',
@@ -43,8 +37,6 @@ export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
     model: 'llama_3_3_70b',
     priceINR: 999,
     priceUSD: 12,
-    stripePriceIdINR: process.env.STRIPE_GROWTH_PRICE_INR ?? null,
-    stripePriceIdUSD: process.env.STRIPE_GROWTH_PRICE_USD ?? null,
   },
   pro: {
     name: 'Pro',
@@ -53,8 +45,6 @@ export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
     model: 'claude_sonnet',
     priceINR: 2499,
     priceUSD: 29,
-    stripePriceIdINR: process.env.STRIPE_PRO_PRICE_INR ?? null,
-    stripePriceIdUSD: process.env.STRIPE_PRO_PRICE_USD ?? null,
   },
 }
 

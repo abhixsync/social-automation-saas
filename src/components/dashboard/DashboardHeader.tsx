@@ -3,14 +3,14 @@
 import { usePathname } from 'next/navigation'
 import Header from '@/components/dashboard/Header'
 
-const TITLES: Record<string, string> = {
-  '/dashboard': 'Overview',
-  '/dashboard/posts': 'Posts',
-  '/dashboard/accounts': 'LinkedIn Accounts',
-  '/dashboard/schedule': 'Schedule',
-  '/dashboard/settings': 'Settings',
-  '/dashboard/billing': 'Billing',
-}
+const TITLE_PREFIXES: [string, string][] = [
+  ['/dashboard/posts', 'Posts'],
+  ['/dashboard/accounts', 'LinkedIn Accounts'],
+  ['/dashboard/schedule', 'Schedule'],
+  ['/dashboard/settings', 'Settings'],
+  ['/dashboard/billing', 'Billing'],
+  ['/dashboard', 'Overview'],
+]
 
 interface DashboardHeaderProps {
   user: {
@@ -22,6 +22,6 @@ interface DashboardHeaderProps {
 
 export default function DashboardHeader({ user }: DashboardHeaderProps) {
   const pathname = usePathname()
-  const title = TITLES[pathname] ?? 'Dashboard'
+  const title = TITLE_PREFIXES.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? 'Dashboard'
   return <Header title={title} user={user} />
 }

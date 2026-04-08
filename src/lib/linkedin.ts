@@ -1,7 +1,7 @@
 import { encrypt, decrypt } from '@/lib/encryption'
 
 const LINKEDIN_API_BASE = 'https://api.linkedin.com'
-const LINKEDIN_VERSION = '202602'
+const LINKEDIN_VERSION = process.env.LINKEDIN_API_VERSION ?? '202602'
 
 // ─── OAuth helpers ────────────────────────────────────────────────────────────
 
