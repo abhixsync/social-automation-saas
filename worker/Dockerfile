@@ -14,10 +14,12 @@ RUN npm install
 # Generate Prisma client into ../src/generated/prisma/
 RUN npx prisma generate --schema=../prisma/schema.prisma
 
+# Make @prisma packages visible to the generated client (ESM resolution walks up dirs)
+RUN mkdir -p /app/node_modules && cp -r /app/worker/node_modules/@prisma /app/node_modules/
+
 # Copy worker source
 COPY worker/src/ ./src/
 
 ENV NODE_ENV=production
-ENV NODE_PATH=/app/worker/node_modules
 
 CMD ["node_modules/.bin/tsx", "src/index.ts"]
