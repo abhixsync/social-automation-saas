@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -29,6 +29,8 @@ interface AccountsClientProps {
   accounts: Account[]
   maxAccounts: number
   plan: string
+  connected?: string
+  error?: string
 }
 
 function getDaysUntilExpiry(expiresAt: string): number {
@@ -71,11 +73,19 @@ function ExpiryBadge({ expiresAt }: { expiresAt: string }) {
   )
 }
 
-export default function AccountsClient({ accounts: initial, maxAccounts, plan }: AccountsClientProps) {
+export default function AccountsClient({ accounts: initial, maxAccounts, plan, connected, error }: AccountsClientProps) {
   const [accounts, setAccounts] = useState(initial)
   const [disconnectTarget, setDisconnectTarget] = useState<Account | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
   const [connecting, setConnecting] = useState(false)
+
+  useEffect(() => {
+    if (connected === '1') toast.success('LinkedIn account connected successfully!')
+    else if (error === 'denied') toast.error('LinkedIn authorization was declined.')
+    else if (error === 'invalid_state') toast.error('OAuth state mismatch. Please try again.')
+    else if (error === 'token_exchange') toast.error('Failed to connect LinkedIn. Please try again.')
+    else if (error) toast.error('Something went wrong. Please try again.')
+  }, [])
 
   const canAdd = accounts.length < maxAccounts
 

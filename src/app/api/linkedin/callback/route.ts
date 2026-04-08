@@ -19,17 +19,17 @@ export async function GET(req: NextRequest) {
   // LinkedIn declined authorization
   if (error) {
     console.error('[linkedin/callback] OAuth error:', error)
-    return NextResponse.redirect(`${appUrl}/dashboard/settings/linkedin?error=denied`)
+    return NextResponse.redirect(`${appUrl}/dashboard/accounts?error=denied`)
   }
 
   // Verify CSRF state
   const storedState = req.cookies.get('li_oauth_state')?.value
   if (!state || !storedState || state !== storedState) {
-    return NextResponse.redirect(`${appUrl}/dashboard/settings/linkedin?error=invalid_state`)
+    return NextResponse.redirect(`${appUrl}/dashboard/accounts?error=invalid_state`)
   }
 
   if (!code) {
-    return NextResponse.redirect(`${appUrl}/dashboard/settings/linkedin?error=no_code`)
+    return NextResponse.redirect(`${appUrl}/dashboard/accounts?error=no_code`)
   }
 
   const session = await auth()
@@ -73,12 +73,12 @@ export async function GET(req: NextRequest) {
 
     // Clear the state cookie
     const response = NextResponse.redirect(
-      `${appUrl}/dashboard/settings/linkedin?connected=1`,
+      `${appUrl}/dashboard/accounts?connected=1`,
     )
     response.cookies.delete('li_oauth_state')
     return response
   } catch (err) {
     console.error('[linkedin/callback]', err)
-    return NextResponse.redirect(`${appUrl}/dashboard/settings/linkedin?error=token_exchange`)
+    return NextResponse.redirect(`${appUrl}/dashboard/accounts?error=token_exchange`)
   }
 }

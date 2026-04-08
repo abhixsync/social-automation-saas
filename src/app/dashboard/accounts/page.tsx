@@ -5,7 +5,12 @@ import { PLAN_CONFIG } from '@/types'
 import type { Plan } from '@/generated/prisma/enums'
 import AccountsClient from './AccountsClient'
 
-export default async function AccountsPage() {
+export default async function AccountsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ connected?: string; error?: string }>
+}) {
+  const { connected, error } = await searchParams
   const session = await auth()
   if (!session?.user?.id) redirect('/auth/login')
 
@@ -34,6 +39,8 @@ export default async function AccountsPage() {
       }))}
       maxAccounts={maxAccounts}
       plan={plan}
+      connected={connected}
+      error={error}
     />
   )
 }
