@@ -7,7 +7,7 @@ COPY prisma/ ./prisma/
 COPY src/ ./src/
 
 # Install worker dependencies
-COPY worker/package.json ./worker/package.json
+COPY worker/package.json worker/tsconfig.json ./worker/
 WORKDIR /app/worker
 RUN npm install
 
