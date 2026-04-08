@@ -64,7 +64,10 @@ export default function Header({ title, user }: HeaderProps) {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-red-600 focus:text-red-600 focus:bg-red-50"
-            onSelect={() => signOut({ callbackUrl: '/auth/login' })}
+            onSelect={async () => {
+              await signOut({ redirect: false })
+              window.location.href = '/auth/login'
+            }}
           >
             <LogOut className="w-4 h-4 mr-2" />
             Sign out

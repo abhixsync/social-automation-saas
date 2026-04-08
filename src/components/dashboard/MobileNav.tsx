@@ -140,7 +140,10 @@ export default function MobileNav({ credits, user }: MobileNavProps) {
                 </div>
               </div>
               <button
-                onClick={() => signOut({ callbackUrl: '/auth/login' })}
+                onClick={async () => {
+                  await signOut({ redirect: false })
+                  window.location.href = '/auth/login'
+                }}
                 className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                 aria-label="Sign out"
               >
