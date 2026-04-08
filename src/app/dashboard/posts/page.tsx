@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { RefreshCw, Trash2, CheckCircle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { RefreshCw, Trash2, CheckCircle, ChevronLeft, ChevronRight, Loader2, Eye } from 'lucide-react'
 
 interface Post {
   id: string
@@ -68,6 +68,7 @@ export default function PostsPage() {
   const [loading, setLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({})
   const [deleteTarget, setDeleteTarget] = useState<Post | null>(null)
+  const [viewPost, setViewPost] = useState<Post | null>(null)
 
   const fetchPosts = useCallback(async (status: string, p: number) => {
     setLoading(true)
@@ -196,10 +197,12 @@ export default function PostsPage() {
                             </span>
                             <span className="text-xs text-gray-400">·</span>
                             <span className="text-xs text-gray-400">
-                              {new Date(post.createdAt).toLocaleDateString('en-IN', {
+                              {new Date(post.createdAt).toLocaleString('en-IN', {
                                 day: 'numeric',
                                 month: 'short',
                                 year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
                               })}
                             </span>
                           </div>
@@ -223,6 +226,15 @@ export default function PostsPage() {
                         </div>
 
                         <div className="flex items-center gap-2 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setViewPost(post)}
+                            className="px-2 text-gray-400 hover:text-indigo-600"
+                            title="View full post"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
                           {post.status === 'pending_approval' && (
                             <>
                               <Button
@@ -302,6 +314,36 @@ export default function PostsPage() {
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* View full post dialog */}
+      <Dialog open={!!viewPost} onOpenChange={(open) => !open && setViewPost(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-base">{viewPost?.topic}</DialogTitle>
+            <DialogDescription>
+              {new Date(viewPost?.createdAt ?? '').toLocaleString('en-IN', {
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              })} · {viewPost?.wordCount} words · {viewPost?.creditsUsed} credits
+            </DialogDescription>
+          </DialogHeader>
+          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
+            {viewPost?.generatedContent}
+          </div>
+          {viewPost?.status === 'pending_approval' && (
+            <DialogFooter>
+              <Button
+                onClick={() => { handleApprove(viewPost!); setViewPost(null) }}
+                disabled={!!actionLoading[viewPost?.id ?? '']}
+                className="bg-indigo-600 hover:bg-indigo-700 text-sm"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Approve & Publish
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirm dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>

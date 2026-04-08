@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import Sidebar from '@/components/dashboard/Sidebar'
 import MobileNav from '@/components/dashboard/MobileNav'
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
@@ -14,9 +15,15 @@ export default async function DashboardLayout({
     redirect('/auth/login')
   }
 
+  // Always fetch fresh credits from DB — JWT session is stale after worker updates
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { aiCreditsUsed: true, aiCreditsTotal: true },
+  })
+
   const credits = {
-    used: session.user.aiCreditsUsed,
-    total: session.user.aiCreditsTotal,
+    used: dbUser?.aiCreditsUsed ?? session.user.aiCreditsUsed,
+    total: dbUser?.aiCreditsTotal ?? session.user.aiCreditsTotal,
   }
 
   return (

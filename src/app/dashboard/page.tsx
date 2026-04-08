@@ -6,26 +6,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { FileText, Zap, Users, TrendingUp, CheckCircle2, Circle, ArrowRight } from 'lucide-react'
+import RecentPostsList from './RecentPostsList'
 
-function statusColor(status: string) {
-  switch (status) {
-    case 'published': return 'bg-green-100 text-green-700'
-    case 'pending_approval': return 'bg-yellow-100 text-yellow-700'
-    case 'failed': return 'bg-red-100 text-red-700'
-    case 'approved': return 'bg-blue-100 text-blue-700'
-    default: return 'bg-gray-100 text-gray-600'
-  }
-}
-
-function statusLabel(status: string) {
-  switch (status) {
-    case 'pending_approval': return 'Pending'
-    case 'published': return 'Published'
-    case 'failed': return 'Failed'
-    case 'approved': return 'Approved'
-    default: return status
-  }
-}
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -54,6 +36,7 @@ export default async function DashboardPage() {
         creditsUsed: true,
         wordCount: true,
         createdAt: true,
+        generatedContent: true,
         linkedInAccount: { select: { displayName: true } },
       },
     }),
@@ -95,8 +78,13 @@ export default async function DashboardPage() {
     },
   ]
 
-  const creditsUsed = session.user.aiCreditsUsed
-  const creditsTotal = session.user.aiCreditsTotal
+  // Fetch fresh credits from DB — JWT is stale after worker deducts credits
+  const dbUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { aiCreditsUsed: true, aiCreditsTotal: true },
+  })
+  const creditsUsed = dbUser?.aiCreditsUsed ?? session.user.aiCreditsUsed
+  const creditsTotal = dbUser?.aiCreditsTotal ?? session.user.aiCreditsTotal
   const creditsRemaining = creditsTotal - creditsUsed
   const creditsPct = creditsTotal > 0 ? Math.min(100, (creditsUsed / creditsTotal) * 100) : 0
 
@@ -212,34 +200,10 @@ export default async function DashboardPage() {
               <CardTitle className="text-base font-semibold text-gray-900">Recent Posts</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {recentPosts.length === 0 ? (
-                <div className="px-6 py-10 text-center text-gray-400 text-sm">
-                  No posts yet. Connect a LinkedIn account and set up a schedule to get started.
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {recentPosts.map((post) => (
-                    <div key={post.id} className="flex items-center justify-between px-6 py-3.5">
-                      <div className="flex-1 min-w-0 mr-4">
-                        <p className="text-sm font-medium text-gray-900 truncate">{post.topic}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {post.linkedInAccount.displayName ?? 'LinkedIn'} ·{' '}
-                          {post.wordCount} words · {post.creditsUsed} credits ·{' '}
-                          {new Date(post.createdAt).toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
-                        </p>
-                      </div>
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${statusColor(post.status)}`}
-                      >
-                        {statusLabel(post.status)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <RecentPostsList posts={recentPosts.map((p) => ({
+                ...p,
+                createdAt: p.createdAt.toISOString(),
+              }))} />
             </CardContent>
           </Card>
         </div>
