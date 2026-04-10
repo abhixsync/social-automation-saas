@@ -28,7 +28,7 @@ export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
     maxAccounts: 1,
     model: 'llama_3_3_70b',
     priceINR: 499,
-    priceUSD: 6,
+    priceUSD: 5.99,
   },
   growth: {
     name: 'Growth',
