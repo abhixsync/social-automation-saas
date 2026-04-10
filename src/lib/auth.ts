@@ -92,11 +92,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const country = request.headers?.get?.('x-vercel-ip-country') ?? 'IN'
         const detectedCurrency = country === 'IN' ? 'INR' : 'USD'
         if (detectedCurrency !== 'INR') {
-          // Only update if still on the default INR — never overwrite a manual change
-          await prisma.user.updateMany({
-            where: { id: user.id, currency: 'INR' },
-            data: { currency: detectedCurrency },
+          // Only auto-set on first sign-in (user created within the last 30s).
+          // After that, currency is the user's own choice — never overwrite it.
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { createdAt: true },
           })
+          const isNewUser = dbUser && Date.now() - dbUser.createdAt.getTime() < 30_000
+          if (isNewUser) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { currency: detectedCurrency },
+            })
+          }
         }
       }
       return true
