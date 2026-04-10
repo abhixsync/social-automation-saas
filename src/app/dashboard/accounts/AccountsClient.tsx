@@ -122,7 +122,7 @@ export default function AccountsClient({ accounts: initial, maxAccounts, plan, c
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">LinkedIn Accounts</h2>
           <p className="text-sm text-gray-500 mt-1">
@@ -183,7 +183,7 @@ export default function AccountsClient({ accounts: initial, maxAccounts, plan, c
             return (
               <Card key={account.id} className="border-gray-200">
                 <CardContent className="p-5">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <div className="flex items-center gap-3">
                       <Avatar className="w-11 h-11">
                         <AvatarImage src={account.profilePicture ?? undefined} />
@@ -206,7 +206,7 @@ export default function AccountsClient({ accounts: initial, maxAccounts, plan, c
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <ExpiryBadge expiresAt={account.expiresAt} />
                       {days <= 14 && (
                         <Button

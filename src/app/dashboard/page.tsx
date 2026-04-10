@@ -127,14 +127,14 @@ export default async function DashboardPage() {
       {!allDone && (
         <Card className="border-indigo-200 bg-indigo-50/40">
           <CardContent className="p-6">
-            <div className="flex items-start justify-between mb-4">
+            <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <h2 className="text-base font-semibold text-gray-900">Get started with Crescova</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
                   Complete these 3 steps to start auto-posting to LinkedIn.
                 </p>
               </div>
-              <span className="text-sm font-medium text-indigo-600">
+              <span className="text-sm font-medium text-indigo-600 flex-shrink-0">
                 {setupSteps.filter((s) => s.done).length} / 3 done
               </span>
             </div>
@@ -142,7 +142,7 @@ export default async function DashboardPage() {
               {setupSteps.map((step, i) => (
                 <div
                   key={i}
-                  className={`flex items-center gap-4 rounded-xl border px-4 py-3.5 bg-white transition-opacity ${
+                  className={`flex items-center gap-3 rounded-xl border px-4 py-3.5 bg-white transition-opacity ${
                     step.done ? 'opacity-50' : 'border-indigo-200 shadow-sm'
                   }`}
                 >

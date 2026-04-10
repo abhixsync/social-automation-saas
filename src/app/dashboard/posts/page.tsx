@@ -165,9 +165,9 @@ export default function PostsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={changeTab}>
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex-nowrap overflow-x-auto w-full sm:w-auto">
           {STATUS_TABS.map((t) => (
-            <TabsTrigger key={t.value} value={t.value}>
+            <TabsTrigger key={t.value} value={t.value} className="shrink-0">
               {t.label}
             </TabsTrigger>
           ))}
@@ -192,7 +192,7 @@ export default function PostsPage() {
                       key={post.id}
                       className="bg-white rounded-xl border border-gray-200 p-5"
                     >
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1.5">
                             {statusBadge(post.status)}
@@ -231,7 +231,7 @@ export default function PostsPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-wrap sm:flex-shrink-0">
                           <Button
                             size="sm"
                             variant="ghost"
