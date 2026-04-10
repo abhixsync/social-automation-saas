@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#064e3b"/>
+      <stop offset="100%" style="stop-color:#065f46"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#34d399"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="800" fill="url(#bg)" rx="32"/>
+  <line x1="0" y1="266" x2="800" y2="266" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <line x1="0" y1="533" x2="800" y2="533" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <line x1="266" y1="0" x2="266" y2="800" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <line x1="533" y1="0" x2="533" y2="800" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <circle cx="400" cy="300" r="260" fill="#10b981" fill-opacity="0.1"/>
+
+  <!-- Badge -->
+  <rect x="265" y="90" width="270" height="52" rx="26" fill="url(#badge)"/>
+  <text x="400" y="124" font-family="system-ui,-apple-system,sans-serif" font-size="24" font-weight="700" fill="white" text-anchor="middle" letter-spacing="4">GROWTH</text>
+
+  <!-- Icon: trending up -->
+  <g transform="translate(322,166)">
+    <polyline points="10,76 52,34 84,54 136,10" stroke="#6ee7b7" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <polyline points="104,10 136,10 136,42" stroke="#6ee7b7" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <!-- Tagline -->
+  <text x="400" y="298" font-family="system-ui,-apple-system,sans-serif" font-size="28" font-weight="600" fill="#a7f3d0" text-anchor="middle">Scale your LinkedIn presence</text>
+
+  <!-- Divider -->
+  <line x1="120" y1="340" x2="680" y2="340" stroke="#10b981" stroke-opacity="0.4" stroke-width="1.5"/>
+
+  <!-- Features -->
+  <rect x="120" y="368" width="24" height="24" rx="12" fill="#10b981"/>
+  <text x="132" y="385" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="white" text-anchor="middle">✓</text>
+  <text x="164" y="386" font-family="system-ui,-apple-system,sans-serif" font-size="28" fill="#d1fae5">1,200 AI credits / month</text>
+
+  <rect x="120" y="432" width="24" height="24" rx="12" fill="#10b981"/>
+  <text x="132" y="449" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="white" text-anchor="middle">✓</text>
+  <text x="164" y="450" font-family="system-ui,-apple-system,sans-serif" font-size="28" fill="#d1fae5">~250 LinkedIn posts / month</text>
+
+  <rect x="120" y="496" width="24" height="24" rx="12" fill="#10b981"/>
+  <text x="132" y="513" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="white" text-anchor="middle">✓</text>
+  <text x="164" y="514" font-family="system-ui,-apple-system,sans-serif" font-size="28" fill="#d1fae5">2 LinkedIn accounts</text>
+
+  <rect x="120" y="560" width="24" height="24" rx="12" fill="#10b981"/>
+  <text x="132" y="577" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="white" text-anchor="middle">✓</text>
+  <text x="164" y="578" font-family="system-ui,-apple-system,sans-serif" font-size="28" fill="#d1fae5">Advanced AI scheduling</text>
+
+  <rect x="120" y="624" width="24" height="24" rx="12" fill="#10b981"/>
+  <text x="132" y="641" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="white" text-anchor="middle">✓</text>
+  <text x="164" y="642" font-family="system-ui,-apple-system,sans-serif" font-size="28" fill="#d1fae5">Llama 70B model</text>
+
+  <!-- Brand -->
+  <text x="400" y="748" font-family="system-ui,-apple-system,sans-serif" font-size="26" font-weight="700" fill="#34d399" text-anchor="middle" letter-spacing="3">CRESCOVA</text>
+</svg>

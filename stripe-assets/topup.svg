@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1c1917"/>
+      <stop offset="100%" style="stop-color:#292524"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="800" fill="url(#bg)" rx="32"/>
+  <line x1="0" y1="266" x2="800" y2="266" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <line x1="0" y1="533" x2="800" y2="533" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <line x1="266" y1="0" x2="266" y2="800" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <line x1="533" y1="0" x2="533" y2="800" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <circle cx="400" cy="300" r="260" fill="#f59e0b" fill-opacity="0.1"/>
+
+  <!-- Badge -->
+  <rect x="210" y="90" width="380" height="52" rx="26" fill="url(#badge)"/>
+  <text x="400" y="124" font-family="system-ui,-apple-system,sans-serif" font-size="22" font-weight="700" fill="white" text-anchor="middle" letter-spacing="3">CREDIT TOP-UP</text>
+
+  <!-- Icon: plus in circle -->
+  <circle cx="400" cy="218" r="46" fill="none" stroke="#fbbf24" stroke-width="6"/>
+  <line x1="400" y1="196" x2="400" y2="240" stroke="#fbbf24" stroke-width="6" stroke-linecap="round"/>
+  <line x1="378" y1="218" x2="422" y2="218" stroke="#fbbf24" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Tagline -->
+  <text x="400" y="308" font-family="system-ui,-apple-system,sans-serif" font-size="28" font-weight="600" fill="#fde68a" text-anchor="middle">Instantly top up your credits</text>
+
+  <!-- Divider -->
+  <line x1="120" y1="350" x2="680" y2="350" stroke="#f59e0b" stroke-opacity="0.4" stroke-width="1.5"/>
+
+  <!-- Features -->
+  <rect x="120" y="378" width="24" height="24" rx="12" fill="#f59e0b"/>
+  <text x="132" y="395" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="white" text-anchor="middle">✓</text>
+  <text x="164" y="396" font-family="system-ui,-apple-system,sans-serif" font-size="28" fill="#fef3c7">100 AI credits</text>
+
+  <rect x="120" y="442" width="24" height="24" rx="12" fill="#f59e0b"/>
+  <text x="132" y="459" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="white" text-anchor="middle">✓</text>
+  <text x="164" y="460" font-family="system-ui,-apple-system,sans-serif" font-size="28" fill="#fef3c7">~50 LinkedIn posts</text>
+
+  <rect x="120" y="506" width="24" height="24" rx="12" fill="#f59e0b"/>
+  <text x="132" y="523" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="white" text-anchor="middle">✓</text>
+  <text x="164" y="524" font-family="system-ui,-apple-system,sans-serif" font-size="28" fill="#fef3c7">One-time purchase</text>
+
+  <rect x="120" y="570" width="24" height="24" rx="12" fill="#f59e0b"/>
+  <text x="132" y="587" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="white" text-anchor="middle">✓</text>
+  <text x="164" y="588" font-family="system-ui,-apple-system,sans-serif" font-size="28" fill="#fef3c7">Credits never expire</text>
+
+  <rect x="120" y="634" width="24" height="24" rx="12" fill="#f59e0b"/>
+  <text x="132" y="651" font-family="system-ui,-apple-system,sans-serif" font-size="14" fill="white" text-anchor="middle">✓</text>
+  <text x="164" y="652" font-family="system-ui,-apple-system,sans-serif" font-size="28" fill="#fef3c7">Works with any plan</text>
+
+  <!-- Brand -->
+  <text x="400" y="748" font-family="system-ui,-apple-system,sans-serif" font-size="26" font-weight="700" fill="#fbbf24" text-anchor="middle" letter-spacing="3">CRESCOVA</text>
+</svg>

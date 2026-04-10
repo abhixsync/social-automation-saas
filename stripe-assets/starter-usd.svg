@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e1b4b"/>
+      <stop offset="100%" style="stop-color:#312e81"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#818cf8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="800" fill="url(#bg)" rx="32"/>
+
+  <line x1="0" y1="266" x2="800" y2="266" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <line x1="0" y1="533" x2="800" y2="533" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <line x1="266" y1="0" x2="266" y2="800" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <line x1="533" y1="0" x2="533" y2="800" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+
+  <circle cx="400" cy="260" r="220" fill="#6366f1" fill-opacity="0.12"/>
+
+  <rect x="290" y="110" width="220" height="48" rx="24" fill="url(#badge)"/>
+  <text x="400" y="142" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="700" fill="white" text-anchor="middle" letter-spacing="3">STARTER</text>
+
+  <g transform="translate(362, 190)">
+    <polygon points="38,0 18,42 34,42 18,80 58,28 40,28 56,0" fill="#a5b4fc" fill-opacity="0.9"/>
+  </g>
+
+  <text x="400" y="330" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="800" fill="white" text-anchor="middle">$6</text>
+  <text x="400" y="368" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#a5b4fc" text-anchor="middle">per month</text>
+
+  <line x1="140" y1="410" x2="660" y2="410" stroke="#6366f1" stroke-opacity="0.4" stroke-width="1.5"/>
+
+  <circle cx="174" cy="460" r="10" fill="#6366f1"/>
+  <text x="174" y="464" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="white" text-anchor="middle">✓</text>
+  <text x="204" y="466" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#e0e7ff">500 AI credits / month</text>
+
+  <circle cx="174" cy="522" r="10" fill="#6366f1"/>
+  <text x="174" y="526" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="white" text-anchor="middle">✓</text>
+  <text x="204" y="528" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#e0e7ff">~100 LinkedIn posts</text>
+
+  <circle cx="174" cy="584" r="10" fill="#6366f1"/>
+  <text x="174" y="588" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="white" text-anchor="middle">✓</text>
+  <text x="204" y="590" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#e0e7ff">1 LinkedIn account</text>
+
+  <circle cx="174" cy="646" r="10" fill="#6366f1"/>
+  <text x="174" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="white" text-anchor="middle">✓</text>
+  <text x="204" y="652" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#e0e7ff">AI-powered scheduling</text>
+
+  <text x="400" y="750" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" fill="#818cf8" text-anchor="middle" letter-spacing="2">CRESCOVA</text>
+</svg>
