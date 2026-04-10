@@ -51,14 +51,14 @@ export async function POST(
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error'
 
-    // Mark failed + refund credits atomically
+    // Mark failed + refund credits atomically (guard against going below 0)
     await prisma.$transaction([
       prisma.post.update({
         where: { id },
         data: { status: 'failed', errorMessage },
       }),
-      prisma.user.update({
-        where: { id: session.user.id },
+      prisma.user.updateMany({
+        where: { id: session.user.id, aiCreditsUsed: { gte: post.creditsUsed } },
         data: { aiCreditsUsed: { decrement: post.creditsUsed } },
       }),
     ])

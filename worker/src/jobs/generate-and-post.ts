@@ -112,10 +112,17 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
 
   const creditsUsed = wordsToCredits(wordCount)
 
-  // 6. Approval mode: save as pending_approval (atomic: post + credit deduction)
+  // 6. Approval mode: save as pending_approval (atomic: post + credit deduction with race guard)
   if (prefs?.approvalMode) {
-    await prisma.$transaction([
-      prisma.post.create({
+    let creditsDeducted = false
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.user.updateMany({
+        where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - creditsUsed } },
+        data: { aiCreditsUsed: { increment: creditsUsed } },
+      })
+      if (result.count === 0) return // credits exhausted by a concurrent job
+      creditsDeducted = true
+      await tx.post.create({
         data: {
           userId,
           linkedInAccountId: accountId,
@@ -127,13 +134,13 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
           aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
           scheduledFor: new Date(),
         },
-      }),
-      prisma.user.update({
-        where: { id: userId },
-        data: { aiCreditsUsed: { increment: creditsUsed } },
-      }),
-    ])
-    console.log(`[worker] Post saved for approval — user ${userId}`)
+      })
+    })
+    if (creditsDeducted) {
+      console.log(`[worker] Post saved for approval — user ${userId}`)
+    } else {
+      console.log(`[worker] User ${userId} ran out of credits (concurrent job prevented double-spend)`)
+    }
     return
   }
 
@@ -141,26 +148,28 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   try {
     await postToLinkedIn(account.accessTokenEncrypted, account.sub, content)
 
-    // Atomic: post record + credit deduction together
-    await prisma.$transaction([
-      prisma.post.create({
+    // Atomic: post record + credit deduction with race guard
+    // If credits ran out concurrently, post is still recorded (already sent) with creditsUsed=0
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.user.updateMany({
+        where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - creditsUsed } },
+        data: { aiCreditsUsed: { increment: creditsUsed } },
+      })
+      const finalCredits = result.count > 0 ? creditsUsed : 0
+      await tx.post.create({
         data: {
           userId,
           linkedInAccountId: accountId,
           topic,
           generatedContent: content,
           wordCount,
-          creditsUsed,
+          creditsUsed: finalCredits,
           status: 'published',
           aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
           publishedAt: new Date(),
         },
-      }),
-      prisma.user.update({
-        where: { id: userId },
-        data: { aiCreditsUsed: { increment: creditsUsed } },
-      }),
-    ])
+      })
+    })
 
     console.log(`[worker] ✅ Published post for user ${userId}`)
   } catch (err) {

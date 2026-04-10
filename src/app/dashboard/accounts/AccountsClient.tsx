@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -79,13 +80,17 @@ export default function AccountsClient({ accounts: initial, maxAccounts, plan, c
   const [disconnecting, setDisconnecting] = useState(false)
   const [connecting, setConnecting] = useState(false)
 
+  const router = useRouter()
+
   useEffect(() => {
     if (connected === '1') toast.success('LinkedIn account connected successfully!')
     else if (error === 'denied') toast.error('LinkedIn authorization was declined.')
     else if (error === 'invalid_state') toast.error('OAuth state mismatch. Please try again.')
     else if (error === 'token_exchange') toast.error('Failed to connect LinkedIn. Please try again.')
     else if (error) toast.error('Something went wrong. Please try again.')
-  }, [connected, error])
+    // Strip query params so toast doesn't re-fire on page refresh
+    if (connected || error) router.replace('/dashboard/accounts')
+  }, [connected, error, router])
 
   const canAdd = accounts.length < maxAccounts
 

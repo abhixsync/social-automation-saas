@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe, buildPriceMap, getCreditsForPlan } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
-import { addTopupCredits, resetMonthlyCredits } from '@/lib/credits'
+import { resetMonthlyCredits } from '@/lib/credits'
+import { PLAN_CONFIG } from '@/types'
 import type Stripe from 'stripe'
 import type { Plan, Currency } from '@/generated/prisma/enums'
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
-  const sig = req.headers.get('stripe-signature')!
+  const sig = req.headers.get('stripe-signature')
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+
+  if (!sig) {
+    return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
+  }
 
   let event: Stripe.Event
   try {
@@ -97,7 +102,27 @@ export async function POST(req: NextRequest) {
           where: { id: user.id },
           data: { plan: 'free', stripeSubscriptionId: null },
         })
-        await resetMonthlyCredits(user.id, 40) // free plan credits
+        await resetMonthlyCredits(user.id, PLAN_CONFIG.free.creditsPerMonth)
+        break
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice
+        // Only reset credits on renewals — initial payment is handled by customer.subscription.created
+        if (invoice.billing_reason !== 'subscription_cycle') break
+
+        const sub = invoice.parent?.subscription_details?.subscription
+        const subscriptionId = typeof sub === 'string' ? sub : (sub?.id ?? null)
+        if (!subscriptionId) break
+
+        const user = await prisma.user.findFirst({
+          where: { stripeSubscriptionId: subscriptionId },
+          select: { id: true, plan: true },
+        })
+        if (!user) break
+
+        const newCredits = getCreditsForPlan(user.plan as Plan)
+        await resetMonthlyCredits(user.id, newCredits)
         break
       }
     }

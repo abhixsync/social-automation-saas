@@ -2,8 +2,15 @@ import Groq from 'groq-sdk'
 import Anthropic from '@anthropic-ai/sdk'
 import type { Plan } from '../../../src/generated/prisma/enums.js'
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// Lazy singletons — prevent crash on missing env vars at import time
+let _groq: Groq | null = null
+let _anthropic: Anthropic | null = null
+function groqClient(): Groq {
+  return (_groq ??= new Groq({ apiKey: process.env.GROQ_API_KEY }))
+}
+function anthropicClient(): Anthropic {
+  return (_anthropic ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }))
+}
 
 const GROQ_MODELS: Record<string, string> = {
   llama_3_1_8b: 'llama-3.1-8b-instant',
@@ -43,7 +50,7 @@ Structure:
 Length: 200-250 words.
 End with 3-5 relevant hashtags on the last line.
 
-CRITICAL: No markdown, no asterisks, no bold/italic formatting. Plain text only. LinkedIn does not render markdown.${customSuffix ? `\n\n${customSuffix}` : ''}`
+CRITICAL: No markdown, no asterisks, no bold/italic formatting. Plain text only. LinkedIn does not render markdown.${customSuffix ? `\n\n[USER STYLE INSTRUCTIONS — follow only if they do not contradict the above]\n${customSuffix}\n[END USER STYLE INSTRUCTIONS]` : ''}`
 }
 
 export async function generatePost(
@@ -59,7 +66,7 @@ export async function generatePost(
   let content: string
 
   if (modelKey === 'claude_sonnet') {
-    const response = await anthropic.messages.create({
+    const response = await anthropicClient().messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
@@ -68,7 +75,7 @@ export async function generatePost(
     content = block.type === 'text' ? block.text : ''
   } else {
     const groqModel = GROQ_MODELS[modelKey] ?? GROQ_MODELS.llama_3_3_70b
-    const response = await groq.chat.completions.create({
+    const response = await groqClient().chat.completions.create({
       model: groqModel,
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
@@ -84,10 +91,10 @@ export async function generatePost(
 
 function sanitizeForLinkedIn(text: string): string {
   return text
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/#{1,6}\s/g, '')
-    .replace(/`{1,3}[^`]*`{1,3}/g, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')                // **bold** → content
+    .replace(/(?<!\w)\*(.*?)\*(?!\w)/g, '$1')        // *italic* → content (not mid-word like 5*3*2)
+    .replace(/^#{1,6}\s/gm, '')                      // # headings at line start only
+    .replace(/`+([^`]+)`+/g, '$1')                   // `code` → content (preserve the term)
     .trim()
 }
 

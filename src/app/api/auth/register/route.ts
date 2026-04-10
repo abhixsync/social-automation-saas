@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { PLAN_CONFIG } from '@/types'
+import { checkRateLimit, getClientIp } from '@/lib/ratelimit'
+import { sendWelcomeEmail } from '@/lib/email'
 
 const schema = z.object({
   name: z.string().min(2).max(100),
@@ -12,6 +14,12 @@ const schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req)
+  const { allowed } = await checkRateLimit(`register:${ip}`, 5, 60)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
+
   try {
     const body = await req.json()
     const { name, email, password, currency } = schema.parse(body)
@@ -36,10 +44,18 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Fire-and-forget — don't block signup on email failure
+    sendWelcomeEmail(email, name).catch((err) =>
+      console.error('[register] Failed to send welcome email:', err),
+    )
+
     return NextResponse.json({ message: 'Account created' }, { status: 201 })
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? 'Validation error' }, { status: 400 })
+    }
+    if ((err as { code?: string }).code === 'P2002') {
+      return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
     }
     console.error('[register]', err)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })

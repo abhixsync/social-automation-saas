@@ -99,6 +99,7 @@ export default function PostsPage() {
 
   async function handleApprove(post: Post) {
     setActionLoading((p) => ({ ...p, [post.id]: 'approve' }))
+    const toastId = toast.loading('Publishing to LinkedIn…')
     try {
       const res = await fetch(`/api/posts/${post.id}/approve`, {
         method: 'POST',
@@ -106,10 +107,10 @@ export default function PostsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed to approve')
-      toast.success('Post approved and published to LinkedIn')
+      toast.success('Post published to LinkedIn', { id: toastId })
       fetchPosts(activeTab, page)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to approve post')
+      toast.error(err instanceof Error ? err.message : 'Failed to approve post', { id: toastId })
     } finally {
       setActionLoading((p) => { const n = { ...p }; delete n[post.id]; return n })
     }
@@ -117,6 +118,7 @@ export default function PostsPage() {
 
   async function handleRegenerate(post: Post) {
     setActionLoading((p) => ({ ...p, [post.id]: 'regenerate' }))
+    const toastId = toast.loading('Generating with AI…')
     try {
       const res = await fetch(`/api/posts/${post.id}/regenerate`, {
         method: 'POST',
@@ -124,10 +126,10 @@ export default function PostsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed to regenerate')
-      toast.success('Post regenerated successfully')
+      toast.success('Post regenerated successfully', { id: toastId })
       fetchPosts(activeTab, page)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to regenerate post')
+      toast.error(err instanceof Error ? err.message : 'Failed to regenerate post', { id: toastId })
     } finally {
       setActionLoading((p) => { const n = { ...p }; delete n[post.id]; return n })
     }

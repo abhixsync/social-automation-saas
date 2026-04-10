@@ -16,6 +16,7 @@ export async function GET() {
       profilePicture: true,
       sub: true,
       expiresAt: true,
+      connectedAt: true,
     },
     orderBy: { connectedAt: 'desc' },
   })

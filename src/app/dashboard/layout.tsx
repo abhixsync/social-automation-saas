@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -16,10 +17,16 @@ export default async function DashboardLayout({
   }
 
   // Always fetch fresh credits from DB — JWT session is stale after worker updates
-  const dbUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { aiCreditsUsed: true, aiCreditsTotal: true },
-  })
+  // Wrapped in try/catch: if DB is down, fall back to JWT values rather than crashing the entire layout
+  let dbUser = null
+  try {
+    dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { aiCreditsUsed: true, aiCreditsTotal: true },
+    })
+  } catch {
+    // DB error — sidebar will show session credits (stale but usable)
+  }
 
   const credits = {
     used: dbUser?.aiCreditsUsed ?? session.user.aiCreditsUsed,
@@ -45,9 +52,9 @@ export default async function DashboardLayout({
           <DashboardHeader user={session.user} />
         </div>
 
-        {/* Page content */}
+        {/* Page content — Suspense enables streaming so sidebar renders immediately */}
         <main className="flex-1 overflow-y-auto">
-          {children}
+          <Suspense>{children}</Suspense>
         </main>
       </div>
     </div>

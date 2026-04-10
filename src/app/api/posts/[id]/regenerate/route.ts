@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generatePost } from '@/lib/ai'
 import { wordsToCredits } from '@/types'
+import { checkRateLimit } from '@/lib/ratelimit'
 import type { Plan } from '@/generated/prisma/enums'
 
 export async function POST(
@@ -11,6 +12,11 @@ export async function POST(
 ) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { allowed } = await checkRateLimit(`regenerate:${session.user.id}`, 10, 60)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
 
   const { id } = await params
 

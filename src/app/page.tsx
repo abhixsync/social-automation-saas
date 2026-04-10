@@ -290,7 +290,7 @@ function Footer() {
 
         <div className="mt-8 border-t border-gray-100 pt-6 text-center">
           <p className="text-xs text-gray-400">
-            © 2025 Crescova. Built for LinkedIn creators.
+            © {new Date().getFullYear()} Crescova. Built for LinkedIn creators.
           </p>
         </div>
       </div>

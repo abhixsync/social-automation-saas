@@ -1,6 +1,7 @@
-import { createWorker } from './queues.js'
+import { createWorker, redis } from './queues.js'
 import { generateAndPost } from './jobs/generate-and-post.js'
 import { checkExpiringTokens } from './jobs/check-expiring-tokens.js'
+import { prisma } from './lib/prisma.js'
 
 // ─── BullMQ worker ────────────────────────────────────────────────────────────
 
@@ -52,6 +53,8 @@ async function shutdown(signal: string): Promise<void> {
   console.log(`[worker] ${signal} received — shutting down gracefully`)
   clearTimeout(dailyTimer)
   await worker.close()
+  await prisma.$disconnect()
+  await redis.quit()
   process.exit(0)
 }
 

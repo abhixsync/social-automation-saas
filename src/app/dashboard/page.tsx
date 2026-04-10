@@ -17,7 +17,7 @@ export default async function DashboardPage() {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [publishedThisMonth, linkedInAccounts, recentPosts, preferences, activeSchedule, totalPosts] = await Promise.all([
+  const [publishedThisMonth, linkedInAccounts, recentPosts, preferences, activeSchedule, totalPosts, dbUser] = await Promise.all([
     prisma.post.count({
       where: { userId, status: 'published', publishedAt: { gte: startOfMonth } },
     }),
@@ -48,6 +48,11 @@ export default async function DashboardPage() {
       where: { userId, isActive: true },
     }),
     prisma.post.count({ where: { userId } }),
+    // Fetch fresh credits in the same round-trip — avoids a separate DB call
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { aiCreditsUsed: true, aiCreditsTotal: true },
+    }),
   ])
 
   // Onboarding steps
@@ -79,11 +84,6 @@ export default async function DashboardPage() {
     },
   ]
 
-  // Fetch fresh credits from DB — JWT is stale after worker deducts credits
-  const dbUser = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { aiCreditsUsed: true, aiCreditsTotal: true },
-  })
   const creditsUsed = dbUser?.aiCreditsUsed ?? session.user.aiCreditsUsed
   const creditsTotal = dbUser?.aiCreditsTotal ?? session.user.aiCreditsTotal
   const creditsRemaining = creditsTotal - creditsUsed

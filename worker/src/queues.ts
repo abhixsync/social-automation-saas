@@ -5,6 +5,10 @@ export const redis = new IORedis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
 })
 
+redis.on('error', (err) => {
+  console.error('[redis] Connection error:', err)
+})
+
 export const postQueue = new Queue('linkedin-posts', { connection: redis })
 
 export function createWorker(processor: Processor) {

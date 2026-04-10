@@ -22,23 +22,39 @@ export async function GET(req: NextRequest) {
     ...(status ? { status: status as never } : {}),
   }
 
-  const [posts, total] = await Promise.all([
-    prisma.post.findMany({
-      where,
-      include: {
-        linkedInAccount: { select: { displayName: true, profilePicture: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit,
-    }),
-    prisma.post.count({ where }),
-  ])
+  try {
+    const [posts, total] = await Promise.all([
+      prisma.post.findMany({
+        where,
+        select: {
+          id: true,
+          topic: true,
+          status: true,
+          generatedContent: true,
+          wordCount: true,
+          creditsUsed: true,
+          aiModel: true,
+          errorMessage: true,
+          publishedAt: true,
+          scheduledFor: true,
+          createdAt: true,
+          linkedInAccount: { select: { displayName: true, profilePicture: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.post.count({ where }),
+    ])
 
-  return NextResponse.json({
-    posts,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-  })
+    return NextResponse.json({
+      posts,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    })
+  } catch (err) {
+    console.error('[posts/list]', err)
+    return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 })
+  }
 }

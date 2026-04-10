@@ -3,6 +3,15 @@ import { Resend } from 'resend'
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'Crescova <noreply@crescova.app>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://crescova.app'
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+}
+
 function getResend(): Resend | null {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY not set — skipping email send')
@@ -15,7 +24,7 @@ export async function sendWelcomeEmail(email: string, name: string | null): Prom
   const resend = getResend()
   if (!resend) return
 
-  const displayName = name ?? 'there'
+  const displayName = escapeHtml(name ?? 'there')
 
   const html = `<!DOCTYPE html>
 <html lang="en">

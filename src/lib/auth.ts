@@ -4,6 +4,7 @@ import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
+import { PLAN_CONFIG } from '@/types'
 import type { Plan, Currency } from '@/generated/prisma/enums'
 
 // Extend NextAuth types
@@ -135,7 +136,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         data: {
           plan: 'free',
           currency: 'INR',
-          aiCreditsTotal: 40,
+          aiCreditsTotal: PLAN_CONFIG.free.creditsPerMonth,
           aiCreditsUsed: 0,
           creditsResetAt: new Date(),
         },

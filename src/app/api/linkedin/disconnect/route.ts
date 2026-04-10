@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { removeUserSchedule } from '@/lib/scheduler'
 import { z } from 'zod'
 
 const schema = z.object({ accountId: z.string() })
@@ -36,6 +37,9 @@ export async function POST(req: NextRequest) {
       where: { linkedInAccountId: accountId, userId: session.user.id },
       data: { isActive: false },
     })
+
+    // Remove BullMQ jobs so the worker stops firing for this disconnected account
+    await removeUserSchedule(session.user.id, accountId)
 
     return NextResponse.json({ message: 'LinkedIn account disconnected' })
   } catch (err) {
