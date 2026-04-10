@@ -83,6 +83,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
+    // Detect country for Google OAuth users — signIn fires after adapter creates the user,
+    // so the row exists and we can update it. Uses updateMany + currency guard so manual
+    // changes made later in Settings are never overwritten.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async signIn({ user, account, request }: any) {
+      if (account?.provider === 'google' && user?.id && request) {
+        const country = request.headers?.get?.('x-vercel-ip-country') ?? 'IN'
+        const detectedCurrency = country === 'IN' ? 'INR' : 'USD'
+        if (detectedCurrency !== 'INR') {
+          // Only update if still on the default INR — never overwrite a manual change
+          await prisma.user.updateMany({
+            where: { id: user.id, currency: 'INR' },
+            data: { currency: detectedCurrency },
+          })
+        }
+      }
+      return true
+    },
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async jwt({ token, user, trigger }: any) {
       if (user) {
