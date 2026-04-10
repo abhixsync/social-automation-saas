@@ -36,7 +36,7 @@ export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
     maxAccounts: 2,
     model: 'llama_3_3_70b',
     priceINR: 999,
-    priceUSD: 12,
+    priceUSD: 11.99,
   },
   pro: {
     name: 'Pro',
@@ -44,7 +44,7 @@ export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
     maxAccounts: 5,
     model: 'claude_sonnet',
     priceINR: 2499,
-    priceUSD: 29,
+    priceUSD: 29.99,
   },
 }
 
