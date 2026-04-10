@@ -10,7 +10,6 @@ const schema = z.object({
   name: z.string().min(2).max(100),
   email: z.string().email(),
   password: z.string().min(8).max(100),
-  currency: z.enum(['INR', 'USD']).default('INR'),
 })
 
 export async function POST(req: NextRequest) {
@@ -22,7 +21,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { name, email, password, currency } = schema.parse(body)
+    const { name, email, password } = schema.parse(body)
+
+    // Auto-detect currency from Vercel's IP country header. Falls back to INR.
+    const country = req.headers.get('x-vercel-ip-country') ?? 'IN'
+    const currency = country === 'IN' ? 'INR' : 'USD'
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {

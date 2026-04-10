@@ -16,7 +16,6 @@ const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   email: z.string().email('Invalid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  currency: z.enum(['INR', 'USD']),
 })
 type FormData = z.infer<typeof schema>
 
@@ -27,7 +26,6 @@ export default function SignupForm() {
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { currency: 'INR' },
   })
 
   async function onSubmit(data: FormData) {
@@ -42,7 +40,6 @@ export default function SignupForm() {
       setError(json.error || 'Registration failed')
       return
     }
-    // Auto sign-in after registration
     await signIn('credentials', {
       email: data.email,
       password: data.password,
@@ -106,17 +103,6 @@ export default function SignupForm() {
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" autoComplete="new-password" {...register('password')} />
             {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="currency">Billing currency</Label>
-            <select
-              id="currency"
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              {...register('currency')}
-            >
-              <option value="INR">₹ Indian Rupee (INR)</option>
-              <option value="USD">$ US Dollar (USD)</option>
-            </select>
           </div>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Creating account…' : 'Create account'}
