@@ -51,7 +51,7 @@ export default async function DashboardPage() {
     // Fetch fresh credits in the same round-trip — avoids a separate DB call
     prisma.user.findUnique({
       where: { id: userId },
-      select: { aiCreditsUsed: true, aiCreditsTotal: true },
+      select: { aiCreditsUsed: true, aiCreditsTotal: true, plan: true },
     }),
   ])
 
@@ -230,7 +230,7 @@ export default async function DashboardPage() {
               <div className="pt-2 border-t border-gray-100">
                 <p className="text-xs text-gray-500 mb-1">Plan</p>
                 <Badge variant="secondary" className="capitalize bg-indigo-50 text-indigo-700 border-0">
-                  {session.user.plan}
+                  {dbUser?.plan ?? session.user.plan}
                 </Badge>
               </div>
 

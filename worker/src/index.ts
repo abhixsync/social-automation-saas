@@ -1,3 +1,4 @@
+import { createServer } from 'node:http'
 import { createWorker, redis } from './queues.js'
 import { generateAndPost } from './jobs/generate-and-post.js'
 import { checkExpiringTokens } from './jobs/check-expiring-tokens.js'
@@ -55,10 +56,27 @@ async function shutdown(signal: string): Promise<void> {
   await worker.close()
   await prisma.$disconnect()
   await redis.quit()
+  healthServer.close()
   process.exit(0)
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))
+
+// ─── Health endpoint ──────────────────────────────────────────────────────────
+
+const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT ?? '9000', 10)
+const healthServer = createServer((req, res) => {
+  if (req.method === 'GET' && req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ status: 'ok', uptime: Math.floor(process.uptime()) }))
+  } else {
+    res.writeHead(404)
+    res.end()
+  }
+})
+healthServer.listen(HEALTH_PORT, () => {
+  console.log(`[worker] Health endpoint → http://0.0.0.0:${HEALTH_PORT}/health`)
+})
 
 console.log('[worker] Started — listening for linkedin-posts jobs')

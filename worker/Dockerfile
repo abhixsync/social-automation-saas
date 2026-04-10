@@ -23,4 +23,7 @@ RUN npm run build
 
 ENV NODE_ENV=production
 
+# Health check endpoint (default port 9000, override with WORKER_HEALTH_PORT)
+EXPOSE 9000
+
 CMD ["node", "dist/index.js"]

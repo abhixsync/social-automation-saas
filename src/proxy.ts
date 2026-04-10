@@ -1,7 +1,5 @@
-// src/middleware.ts
-// Kill switch + auth guard. Must use Node.js runtime (Prisma required).
-export const runtime = 'nodejs'
-
+// src/proxy.ts
+// Kill switch + auth guard. Runs on Node.js runtime (Prisma-capable).
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { resolveAppMode, isPathLocked, MODE_CONFIG } from '@/lib/app-mode'
@@ -38,7 +36,7 @@ async function resolveCurrentMode(): Promise<AppMode> {
 const PROTECTED_PATHS = ['/dashboard', '/billing', '/settings']
 const AUTH_PATHS = ['/auth/login', '/auth/signup']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const bypassSecret = process.env.APP_MODE_BYPASS_SECRET
 
@@ -119,8 +117,3 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
-}

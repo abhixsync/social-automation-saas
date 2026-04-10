@@ -5,6 +5,15 @@ import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -13,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { RefreshCw, Trash2, CheckCircle, ChevronLeft, ChevronRight, Loader2, Eye } from 'lucide-react'
+import { RefreshCw, Trash2, CheckCircle, ChevronLeft, ChevronRight, Loader2, Eye, Pencil, Zap } from 'lucide-react'
 
 interface Post {
   id: string
@@ -33,6 +42,11 @@ interface PostsResponse {
   total: number
   page: number
   totalPages: number
+}
+
+interface LinkedInAccount {
+  id: string
+  displayName: string | null
 }
 
 const STATUS_TABS = [
@@ -70,6 +84,17 @@ export default function PostsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Post | null>(null)
   const [viewPost, setViewPost] = useState<Post | null>(null)
 
+  // Edit mode state (inside view dialog)
+  const [editMode, setEditMode] = useState(false)
+  const [editContent, setEditContent] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
+
+  // Generate Now state
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false)
+  const [generateAccounts, setGenerateAccounts] = useState<LinkedInAccount[]>([])
+  const [selectedAccountId, setSelectedAccountId] = useState('')
+  const [generateLoading, setGenerateLoading] = useState(false)
+
   const fetchPosts = useCallback(async (status: string, p: number) => {
     setLoading(true)
     try {
@@ -95,6 +120,41 @@ export default function PostsPage() {
   function changeTab(tab: string) {
     setActiveTab(tab)
     setPage(1)
+  }
+
+  function openViewPost(post: Post) {
+    setViewPost(post)
+    setEditMode(false)
+    setEditContent(post.generatedContent)
+  }
+
+  function closeViewPost() {
+    setViewPost(null)
+    setEditMode(false)
+    setEditContent('')
+  }
+
+  async function handleSaveEdit() {
+    if (!viewPost) return
+    setEditLoading(true)
+    try {
+      const res = await fetch(`/api/posts/${viewPost.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ generatedContent: editContent }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to save')
+      toast.success('Post updated')
+      setViewPost({ ...viewPost, generatedContent: editContent, wordCount: json.post.wordCount })
+      setEditMode(false)
+      fetchPosts(activeTab, page)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save post')
+    } finally {
+      setEditLoading(false)
+    }
   }
 
   async function handleApprove(post: Post) {
@@ -154,14 +214,75 @@ export default function PostsPage() {
     }
   }
 
+  // Generate Now: fetch accounts lazily, queue directly if only one
+  async function handleGenerateNow() {
+    setGenerateLoading(true)
+    try {
+      const res = await fetch('/api/linkedin/accounts', { credentials: 'include' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to load accounts')
+      const accounts: LinkedInAccount[] = json.accounts ?? []
+      if (accounts.length === 0) {
+        toast.error('Connect a LinkedIn account first')
+        return
+      }
+      if (accounts.length === 1) {
+        await queueGenerate(accounts[0].id)
+      } else {
+        setGenerateAccounts(accounts)
+        setSelectedAccountId(accounts[0].id)
+        setShowGenerateDialog(true)
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to start generation')
+    } finally {
+      setGenerateLoading(false)
+    }
+  }
+
+  async function queueGenerate(accountId: string) {
+    setGenerateLoading(true)
+    const toastId = toast.loading('Queuing post generation…')
+    try {
+      const res = await fetch('/api/posts/generate', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linkedInAccountId: accountId }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to queue')
+      toast.success('Post queued — check back in a minute', { id: toastId })
+      setShowGenerateDialog(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to queue post', { id: toastId })
+    } finally {
+      setGenerateLoading(false)
+    }
+  }
+
   const posts = data?.posts ?? []
   const totalPages = data?.totalPages ?? 1
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Posts</h2>
-        <p className="text-sm text-gray-500 mt-1">Manage your AI-generated LinkedIn posts</p>
+      <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Posts</h2>
+          <p className="text-sm text-gray-500 mt-1">Manage your AI-generated LinkedIn posts</p>
+        </div>
+        <Button
+          onClick={handleGenerateNow}
+          disabled={generateLoading}
+          className="bg-indigo-600 hover:bg-indigo-700 flex-shrink-0"
+        >
+          {generateLoading ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Zap className="w-4 h-4 mr-2" />
+          )}
+          Generate Now
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={changeTab}>
@@ -235,7 +356,7 @@ export default function PostsPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => setViewPost(post)}
+                            onClick={() => openViewPost(post)}
                             className="px-2 text-gray-400 hover:text-indigo-600"
                             title="View full post"
                           >
@@ -321,8 +442,8 @@ export default function PostsPage() {
         ))}
       </Tabs>
 
-      {/* View full post dialog */}
-      <Dialog open={!!viewPost} onOpenChange={(open) => !open && setViewPost(null)}>
+      {/* View / Edit full post dialog */}
+      <Dialog open={!!viewPost} onOpenChange={(open) => !open && closeViewPost()}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-base">{viewPost?.topic}</DialogTitle>
@@ -333,21 +454,62 @@ export default function PostsPage() {
               }) : ''} · {viewPost?.wordCount} words · {viewPost?.creditsUsed} credits
             </DialogDescription>
           </DialogHeader>
-          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
-            {viewPost?.generatedContent}
-          </div>
-          {viewPost?.status === 'pending_approval' && (
-            <DialogFooter>
-              <Button
-                onClick={() => { handleApprove(viewPost!); setViewPost(null) }}
-                disabled={!!actionLoading[viewPost?.id ?? '']}
-                className="bg-indigo-600 hover:bg-indigo-700 text-sm"
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Approve & Publish
-              </Button>
-            </DialogFooter>
+
+          {editMode ? (
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="min-h-64 text-sm leading-relaxed resize-none"
+              maxLength={5000}
+            />
+          ) : (
+            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
+              {viewPost?.generatedContent}
+            </div>
           )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            {editMode ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => { setEditMode(false); setEditContent(viewPost?.generatedContent ?? '') }}
+                  disabled={editLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveEdit}
+                  disabled={editLoading || editContent.trim().length === 0}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  {editLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Save changes
+                </Button>
+              </>
+            ) : (
+              viewPost?.status === 'pending_approval' && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditMode(true)}
+                    className="text-sm"
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    onClick={() => { handleApprove(viewPost!); closeViewPost() }}
+                    disabled={!!actionLoading[viewPost?.id ?? '']}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-sm"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approve & Publish
+                  </Button>
+                </>
+              )
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -374,6 +536,46 @@ export default function PostsPage() {
                 <Loader2 className="w-4 h-4 animate-spin mr-1" />
               ) : null}
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generate Now — account selector (shown only when user has multiple accounts) */}
+      <Dialog open={showGenerateDialog} onOpenChange={(open) => !open && setShowGenerateDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Post Now</DialogTitle>
+            <DialogDescription>
+              Choose which LinkedIn account to generate a post for.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="account-select">LinkedIn account</Label>
+            <Select value={selectedAccountId} onValueChange={(v) => v && setSelectedAccountId(v)}>
+              <SelectTrigger id="account-select">
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {generateAccounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.displayName ?? a.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowGenerateDialog(false)} disabled={generateLoading}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => queueGenerate(selectedAccountId)}
+              disabled={!selectedAccountId || generateLoading}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              {generateLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Generate
             </Button>
           </DialogFooter>
         </DialogContent>

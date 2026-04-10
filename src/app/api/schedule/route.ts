@@ -17,17 +17,21 @@ export async function GET(req: NextRequest) {
 
   const accountId = req.nextUrl.searchParams.get('accountId')
 
-  const schedules = await prisma.postSchedule.findMany({
-    where: {
-      userId: session.user.id,
-      ...(accountId ? { linkedInAccountId: accountId } : {}),
-    },
-    include: {
-      linkedInAccount: { select: { displayName: true, profilePicture: true, sub: true } },
-    },
-  })
-
-  return NextResponse.json({ schedules })
+  try {
+    const schedules = await prisma.postSchedule.findMany({
+      where: {
+        userId: session.user.id,
+        ...(accountId ? { linkedInAccountId: accountId } : {}),
+      },
+      include: {
+        linkedInAccount: { select: { displayName: true, profilePicture: true, sub: true } },
+      },
+    })
+    return NextResponse.json({ schedules })
+  } catch (err) {
+    console.error('[schedule/GET]', err)
+    return NextResponse.json({ error: 'Failed to load schedules' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {

@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js'
 import { generatePost, pickTopic, countWords } from '../lib/ai.js'
 import { postToLinkedIn } from '../lib/linkedin.js'
 import { wordsToCredits } from '../lib/credits.js'
+import { sendPostReadyEmail } from '../lib/email.js'
 
 interface JobData {
   userId: string
@@ -19,6 +20,8 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
       select: {
         id: true,
         plan: true,
+        email: true,
+        name: true,
         aiCreditsTotal: true,
         aiCreditsUsed: true,
       },
@@ -138,6 +141,12 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
     })
     if (creditsDeducted) {
       console.log(`[worker] Post saved for approval — user ${userId}`)
+      // Fire-and-forget — email failure must not fail the job
+      if (user.email) {
+        sendPostReadyEmail(user.email, user.name, topic).catch((err) =>
+          console.error('[worker] Failed to send post-ready email:', err),
+        )
+      }
     } else {
       console.log(`[worker] User ${userId} ran out of credits (concurrent job prevented double-spend)`)
     }

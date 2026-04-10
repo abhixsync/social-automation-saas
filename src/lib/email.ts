@@ -12,12 +12,13 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#x27;')
 }
 
+let _resend: Resend | null = null
 function getResend(): Resend | null {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY not set — skipping email send')
     return null
   }
-  return new Resend(process.env.RESEND_API_KEY)
+  return (_resend ??= new Resend(process.env.RESEND_API_KEY))
 }
 
 export async function sendWelcomeEmail(email: string, name: string | null): Promise<void> {

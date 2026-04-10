@@ -9,9 +9,10 @@ import { NAV_LINKS } from '@/lib/nav-links'
 
 interface SidebarProps {
   credits: { used: number; total: number }
+  plan?: string
 }
 
-export default function Sidebar({ credits }: SidebarProps) {
+export default function Sidebar({ credits, plan }: SidebarProps) {
   const pathname = usePathname()
   const remaining = credits.total - credits.used
   const pct = credits.total > 0 ? Math.min(100, (credits.used / credits.total) * 100) : 0
@@ -69,6 +70,11 @@ export default function Sidebar({ credits }: SidebarProps) {
             <Link href="/dashboard/billing" className="underline">
               upgrade
             </Link>
+          </p>
+        )}
+        {plan && (
+          <p className="text-xs text-gray-400 mt-2 capitalize">
+            Plan: <span className="font-medium text-gray-600">{plan}</span>
           </p>
         )}
       </div>
