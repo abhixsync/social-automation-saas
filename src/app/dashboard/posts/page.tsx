@@ -275,7 +275,7 @@ export default function PostsPage() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ linkedInAccountId: accountId }),
+        body: JSON.stringify({ accountId }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed to queue')
@@ -399,6 +399,7 @@ export default function PostsPage() {
                                   alt="Post image preview"
                                   loading="lazy"
                                   className="w-20 h-20 rounded-lg object-cover bg-gray-100"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                                 />
                               )}
                             </div>
@@ -516,20 +517,22 @@ export default function PostsPage() {
               maxLength={5000}
             />
           ) : (
-            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
-              {viewPost?.generatedContent}
-            </div>
-          )}
-
-          {viewPost?.status === 'pending_approval' && (imageOverrides[viewPost.id] ?? viewPost.includeImage) && !editMode && (
-            <div className="border-t pt-4">
-              <p className="text-xs text-gray-500 font-medium mb-3">Image Preview</p>
-              <img
-                src={`/api/posts/${viewPost.id}/image`}
-                alt="LinkedIn post image"
-                loading="lazy"
-                className="w-56 h-56 mx-auto rounded-xl object-cover bg-gray-100"
-              />
+            <div className="overflow-y-auto max-h-[60vh]">
+              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {viewPost?.generatedContent}
+              </div>
+              {viewPost?.status === 'pending_approval' && (imageOverrides[viewPost.id] ?? viewPost.includeImage) && (
+                <div className="border-t pt-4 mt-4">
+                  <p className="text-xs text-gray-500 font-medium mb-3">Image Preview</p>
+                  <img
+                    src={`/api/posts/${viewPost.id}/image`}
+                    alt="LinkedIn post image"
+                    loading="lazy"
+                    className="w-56 h-56 mx-auto rounded-xl object-cover bg-gray-100"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                  />
+                </div>
+              )}
             </div>
           )}
 
