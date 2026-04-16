@@ -362,9 +362,15 @@ export default function PostsPage() {
                           <p className="text-sm text-gray-600 leading-relaxed">
                             {truncate(post.generatedContent)}
                           </p>
-                          <div className="flex gap-4 mt-2 text-xs text-gray-400">
+                          <div className="flex gap-4 mt-2 text-xs text-gray-400 flex-wrap">
                             <span>{post.wordCount} words</span>
                             <span>{post.creditsUsed} credits</span>
+                            {post.includeImage && (
+                              <span className="flex items-center gap-1">
+                                <ImageIcon className="w-3 h-3" />
+                                image
+                              </span>
+                            )}
                             {post.publishedAt && (
                               <span>
                                 Published{' '}
@@ -394,13 +400,18 @@ export default function PostsPage() {
                                 )}
                               </div>
                               {(imageOverrides[post.id] ?? post.includeImage) && (
-                                <img
-                                  src={`/api/posts/${post.id}/image`}
-                                  alt="Post image preview"
-                                  loading="lazy"
-                                  className="w-20 h-20 rounded-lg object-cover bg-gray-100"
-                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                                />
+                                <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                                  <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
+                                    <ImageIcon className="w-7 h-7 text-white/60" />
+                                  </div>
+                                  <img
+                                    src={`/api/posts/${post.id}/image`}
+                                    alt="Post image preview"
+                                    loading="lazy"
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                  />
+                                </div>
                               )}
                             </div>
                           )}
@@ -524,13 +535,19 @@ export default function PostsPage() {
               {viewPost?.status === 'pending_approval' && (imageOverrides[viewPost.id] ?? viewPost.includeImage) && (
                 <div className="border-t pt-4 mt-4">
                   <p className="text-xs text-gray-500 font-medium mb-3">Image Preview</p>
-                  <img
-                    src={`/api/posts/${viewPost.id}/image`}
-                    alt="LinkedIn post image"
-                    loading="lazy"
-                    className="w-56 h-56 mx-auto rounded-xl object-cover bg-gray-100"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                  />
+                  <div className="relative w-64 h-64 mx-auto rounded-xl overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-500 flex flex-col items-center justify-center gap-2">
+                      <ImageIcon className="w-10 h-10 text-white/60" />
+                      <span className="text-white/50 text-xs">Generating…</span>
+                    </div>
+                    <img
+                      src={`/api/posts/${viewPost.id}/image`}
+                      alt="LinkedIn post image"
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                    />
+                  </div>
                 </div>
               )}
             </div>

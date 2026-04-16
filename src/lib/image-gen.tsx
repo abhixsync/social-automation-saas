@@ -1,14 +1,15 @@
-import { ImageResponse } from '@vercel/og'
+import { ImageResponse } from 'next/og'
 
 export type ImageStyle = 'quote_card' | 'stats_card' | 'topic_card'
 
-// Cache font between requests (module-level, lives for the process lifetime)
-let _fontPromise: Promise<ArrayBuffer> | null = null
-function getFont(): Promise<ArrayBuffer> {
+// Cache font between requests (module-level, lives for the process lifetime).
+// Returns null if fetch fails — image generation continues with @vercel/og built-in fonts.
+let _fontPromise: Promise<ArrayBuffer | null> | null = null
+function getFont(): Promise<ArrayBuffer | null> {
   if (_fontPromise) return _fontPromise
   _fontPromise = (async () => {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
+    const timeout = setTimeout(() => controller.abort(), 12_000)
     try {
       const res = await fetch(
         'https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2',
@@ -18,7 +19,8 @@ function getFont(): Promise<ArrayBuffer> {
       return await res.arrayBuffer()
     } catch (err) {
       _fontPromise = null // allow retry on next request
-      throw err
+      console.warn('[image-gen] Font fetch failed, falling back to built-in font:', err)
+      return null // non-fatal
     } finally {
       clearTimeout(timeout)
     }
@@ -68,6 +70,7 @@ export async function generatePostImage(opts: {
   const font = await getFont()
   const [from, to] = GRADIENTS[style]
   const showWatermark = plan === 'free'
+  const fontFamily = font ? 'Inter' : 'sans-serif'
 
   let jsx: React.ReactNode
 
@@ -86,7 +89,7 @@ export async function generatePostImage(opts: {
           height: '100%',
           background: `linear-gradient(135deg, ${from}, ${to})`,
           padding: '80px',
-          fontFamily: 'Inter',
+          fontFamily,
           justifyContent: 'center',
           alignItems: 'center',
           position: 'relative',
@@ -118,7 +121,7 @@ export async function generatePostImage(opts: {
           height: '100%',
           background: `linear-gradient(135deg, ${from}, ${to})`,
           padding: '80px',
-          fontFamily: 'Inter',
+          fontFamily,
           justifyContent: 'center',
           position: 'relative',
         }}
@@ -151,7 +154,7 @@ export async function generatePostImage(opts: {
           height: '100%',
           background: `linear-gradient(135deg, ${from}, ${to})`,
           padding: '80px',
-          fontFamily: 'Inter',
+          fontFamily,
           justifyContent: 'center',
           alignItems: 'center',
           position: 'relative',
@@ -178,7 +181,7 @@ export async function generatePostImage(opts: {
   const response = new ImageResponse(jsx, {
     width: 1080,
     height: 1080,
-    fonts: [{ name: 'Inter', data: font, weight: 400 }],
+    fonts: font ? [{ name: 'Inter', data: font, weight: 400 }] : [],
   })
 
   const arrayBuffer = await response.arrayBuffer()
