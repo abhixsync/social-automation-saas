@@ -1,5 +1,5 @@
 import { Queue, Worker, type Processor } from 'bullmq'
-import IORedis from 'ioredis'
+import { Redis as IORedis } from 'ioredis'
 
 // Upstash free tier: 500K requests/day, 256MB storage.
 // With the conservative options below, BullMQ overhead is roughly:
@@ -11,7 +11,7 @@ export const redis = new IORedis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
 })
 
-redis.on('error', (err) => {
+redis.on('error', (err: Error) => {
   console.error('[redis] Connection error:', err)
 })
 
