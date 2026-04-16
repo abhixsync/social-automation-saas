@@ -185,7 +185,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         topic,
         niche,
         displayName: account.displayName ?? user.name ?? 'Professional',
-        plan: user.plan as 'free' | 'pro',
+        plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
       })
     } catch (imgErr) {
       // Image generation failure is non-fatal — fall back to text-only

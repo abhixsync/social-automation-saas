@@ -3,14 +3,27 @@ import { ImageResponse } from '@vercel/og'
 export type ImageStyle = 'quote_card' | 'stats_card' | 'topic_card'
 
 // Cache font between requests (module-level, lives for the process lifetime)
-let _fontData: ArrayBuffer | null = null
-async function getFont(): Promise<ArrayBuffer> {
-  if (_fontData) return _fontData
-  const res = await fetch(
-    'https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2',
-  )
-  _fontData = await res.arrayBuffer()
-  return _fontData
+let _fontPromise: Promise<ArrayBuffer> | null = null
+function getFont(): Promise<ArrayBuffer> {
+  if (_fontPromise) return _fontPromise
+  _fontPromise = (async () => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+    try {
+      const res = await fetch(
+        'https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2',
+        { signal: controller.signal },
+      )
+      if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`)
+      return await res.arrayBuffer()
+    } catch (err) {
+      _fontPromise = null // allow retry on next request
+      throw err
+    } finally {
+      clearTimeout(timeout)
+    }
+  })()
+  return _fontPromise
 }
 
 // Extract the hook line (first sentence) from a LinkedIn post

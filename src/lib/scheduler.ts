@@ -18,7 +18,13 @@ let _queue: Queue | null = null
 
 export function getPostQueue(): Queue {
   if (!_queue) {
-    _queue = new Queue('linkedin-posts', { connection: getRedis() })
+    _queue = new Queue('linkedin-posts', {
+      connection: getRedis(),
+      defaultJobOptions: {
+        removeOnComplete: { count: 100 }, // Keep only last 100 completed jobs
+        removeOnFail: { count: 50 },      // Keep only last 50 failed jobs
+      },
+    })
   }
   return _queue
 }

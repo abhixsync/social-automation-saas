@@ -31,10 +31,12 @@ export async function uploadImageToLinkedIn(
     throw new Error(`LinkedIn image init failed (${initRes.status}): ${err}`)
   }
 
-  const { value } = await initRes.json() as {
-    value: { uploadUrl: string; image: string }
+  const json = await initRes.json() as { value?: { uploadUrl?: string; image?: string } }
+  const uploadUrl = json?.value?.uploadUrl
+  const imageUrn = json?.value?.image
+  if (!uploadUrl || !imageUrn) {
+    throw new Error(`LinkedIn image init: unexpected response shape: ${JSON.stringify(json)}`)
   }
-  const { uploadUrl, image: imageUrn } = value
 
   // Step 2: Upload binary
   const uploadRes = await fetch(uploadUrl, {
@@ -43,7 +45,7 @@ export async function uploadImageToLinkedIn(
     body: imageBuffer as unknown as BodyInit,
   })
 
-  if (!uploadRes.ok && uploadRes.status !== 201) {
+  if (!uploadRes.ok) {
     const err = await uploadRes.text()
     throw new Error(`LinkedIn image upload failed (${uploadRes.status}): ${err}`)
   }
@@ -72,6 +74,7 @@ export async function postToLinkedInWithImage(
     content: {
       media: {
         id: imageUrn,
+        altText: '',
       },
     },
     lifecycleState: 'PUBLISHED',

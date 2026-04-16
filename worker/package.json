@@ -17,6 +17,7 @@
     "groq-sdk": "^1.1.2",
     "ioredis": "^5.10.1",
     "pg": "^8.20.0",
+    "react": "^19.2.5",
     "resend": "^6.10.0"
   },
   "devDependencies": {

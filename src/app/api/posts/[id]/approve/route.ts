@@ -3,8 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { postToLinkedIn, postToLinkedInWithImage } from '@/lib/linkedin'
 import { generatePostImage, type ImageStyle } from '@/lib/image-gen'
-
-const IMAGE_CREDITS = 5
+import { IMAGE_CREDITS } from '@/lib/credits'
 
 export async function POST(
   _req: NextRequest,
@@ -104,15 +103,16 @@ export async function POST(
     return NextResponse.json({ post: updated })
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-    const totalToRefund = post.creditsUsed + imageCreditsCost
 
-    await prisma.$transaction([
-      prisma.post.update({ where: { id }, data: { status: 'failed', errorMessage } }),
-      prisma.user.updateMany({
-        where: { id: userId, aiCreditsUsed: { gte: totalToRefund } },
-        data: { aiCreditsUsed: { decrement: totalToRefund } },
-      }),
-    ])
+    // Only refund what THIS route deducted (image credits only)
+    // AI generation credits (post.creditsUsed) were deducted by the worker and are non-refundable
+    await prisma.post.update({ where: { id }, data: { status: 'failed', errorMessage } })
+    if (imageCreditsCost > 0) {
+      await prisma.user.updateMany({
+        where: { id: userId, aiCreditsUsed: { gte: imageCreditsCost } },
+        data: { aiCreditsUsed: { decrement: imageCreditsCost } },
+      })
+    }
 
     console.error('[posts/approve]', err)
     return NextResponse.json({ error: 'Failed to post to LinkedIn' }, { status: 502 })

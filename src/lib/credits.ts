@@ -3,6 +3,8 @@ import { wordsToCredits } from '@/types'
 import { getPlanCredits } from '@/lib/plan-settings'
 import type { Plan } from '@/types'
 
+export const IMAGE_CREDITS = 5
+
 /**
  * Check if a user has enough credits remaining.
  * Returns { allowed: true } or { allowed: false, reason }
