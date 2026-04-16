@@ -27,11 +27,11 @@ const faqs = [
   },
   {
     q: "Which AI model do I get?",
-    a: "Free and Starter use Llama 3.3 70B. Pro uses Claude Sonnet (Anthropic's best model).",
+    a: "Free uses Llama 3.3 70B. Pro uses Claude Sonnet (Anthropic's best model).",
   },
   {
     q: "Is there a free plan?",
-    a: "Yes — always free, no credit card required. 40 credits per month, no time limit.",
+    a: "Yes — always free, no credit card required. 1,000 credits per month, no time limit.",
   },
   {
     q: "Can I switch plans?",

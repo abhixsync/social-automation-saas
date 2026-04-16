@@ -22,73 +22,39 @@ interface Plan {
 const plans: Plan[] = [
   {
     name: "Free",
-    credits: 40,
-    posts: "~10 posts/mo",
-    model: "Llama 3.1 8B",
+    credits: 1000,
+    posts: "~200 posts/mo",
+    model: "Llama 3.3 70B",
     priceINR: "Free",
     priceUSD: "Free",
     popular: false,
     free: true,
     features: [
-      "40 credits / month",
-      "~10 posts per month",
-      "Llama 3.1 8B model",
-      "Smart scheduling",
-      "Approval mode",
-    ],
-  },
-  {
-    name: "Starter",
-    credits: 500,
-    posts: "~100 posts/mo",
-    model: "Llama 3.3 70B",
-    priceINR: "₹499",
-    priceUSD: "$5.99",
-    popular: false,
-    free: false,
-    features: [
-      "500 credits / month",
-      "~100 posts per month",
+      "1,000 credits / month",
+      "~200 posts per month",
       "Llama 3.3 70B model",
+      "1 LinkedIn account",
       "Smart scheduling",
       "Approval mode",
     ],
   },
   {
-    name: "Growth",
-    credits: 1200,
-    posts: "~250 posts/mo",
-    model: "Llama 3.3 70B",
+    name: "Pro",
+    credits: 10000,
+    posts: "~2,000 posts/mo",
+    model: "Claude Sonnet",
     priceINR: "₹999",
     priceUSD: "$11.99",
     popular: true,
     free: false,
     features: [
-      "1,200 credits / month",
-      "~250 posts per month",
-      "Llama 3.3 70B model",
-      "Smart scheduling",
-      "Approval mode",
-      "Priority support",
-    ],
-  },
-  {
-    name: "Pro",
-    credits: 3000,
-    posts: "~600 posts/mo",
-    model: "Claude Sonnet",
-    priceINR: "₹2,499",
-    priceUSD: "$29.99",
-    popular: false,
-    free: false,
-    features: [
-      "3,000 credits / month",
-      "~600 posts per month",
+      "10,000 credits / month",
+      "~2,000 posts per month",
       "Claude Sonnet model",
+      "10 LinkedIn accounts",
       "Smart scheduling",
       "Approval mode",
       "Priority support",
-      "Advanced analytics",
     ],
   },
 ];
@@ -164,7 +130,7 @@ export default function PricingSection() {
         </div>
 
         {/* Plan cards */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 max-w-2xl mx-auto w-full">
           {plans.map((plan) => (
             <div
               key={plan.name}
