@@ -71,8 +71,12 @@ export async function DELETE(
 }
 
 const patchSchema = z.object({
-  generatedContent: z.string().min(1, 'Content cannot be empty').max(5000, 'Content too long'),
-})
+  generatedContent: z.string().min(1, 'Content cannot be empty').max(5000, 'Content too long').optional(),
+  includeImage: z.boolean().optional(),
+}).refine(
+  (data) => data.generatedContent !== undefined || data.includeImage !== undefined,
+  { message: 'At least one of generatedContent or includeImage must be provided' },
+)
 
 export async function PATCH(
   req: NextRequest,
@@ -85,7 +89,7 @@ export async function PATCH(
 
   try {
     const body = await req.json()
-    const { generatedContent } = patchSchema.parse(body)
+    const { generatedContent, includeImage } = patchSchema.parse(body)
 
     const post = await prisma.post.findFirst({
       where: { id, userId: session.user.id },
@@ -97,11 +101,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'Only pending posts can be edited' }, { status: 400 })
     }
 
-    const wordCount = generatedContent.trim().split(/\s+/).filter(Boolean).length
+    const updateData: Record<string, unknown> = {}
+    if (generatedContent !== undefined) {
+      updateData.generatedContent = generatedContent
+      updateData.wordCount = generatedContent.trim().split(/\s+/).filter(Boolean).length
+    }
+    if (includeImage !== undefined) {
+      updateData.includeImage = includeImage
+    }
 
     const updated = await prisma.post.update({
       where: { id },
-      data: { generatedContent, wordCount },
+      data: updateData,
     })
 
     return NextResponse.json({ post: updated })

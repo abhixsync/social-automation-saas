@@ -17,6 +17,42 @@ import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, Save } from 'lucide-react'
 
+const IMAGE_STYLES = [
+  {
+    value: 'quote_card',
+    label: 'Quote Card',
+    description: 'Hook text displayed large on a gradient purple background',
+    preview: (
+      <div className="w-full h-20 rounded-md bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center p-3">
+        <p className="text-white text-xs font-semibold text-center leading-tight line-clamp-3">
+          &ldquo;The best time to start was yesterday. The next best time is now.&rdquo;
+        </p>
+      </div>
+    ),
+  },
+  {
+    value: 'stats_card',
+    label: 'Stats Card',
+    description: 'Big number or metric on a gradient pink/red background',
+    preview: (
+      <div className="w-full h-20 rounded-md bg-gradient-to-br from-pink-500 to-red-500 flex flex-col items-center justify-center p-3">
+        <p className="text-white text-2xl font-bold">10x</p>
+        <p className="text-pink-100 text-xs mt-0.5">productivity boost</p>
+      </div>
+    ),
+  },
+  {
+    value: 'topic_card',
+    label: 'Topic Card',
+    description: 'Topic title displayed prominently on a gradient blue background',
+    preview: (
+      <div className="w-full h-20 rounded-md bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center p-3">
+        <p className="text-white text-sm font-bold text-center">System Design Patterns</p>
+      </div>
+    ),
+  },
+]
+
 const TONES = [
   { value: 'professional', label: 'Professional' },
   { value: 'casual', label: 'Casual' },
@@ -40,6 +76,8 @@ interface Preferences {
   customPromptSuffix: string | null
   approvalMode: boolean
   timezone: string
+  imageStyle: 'quote_card' | 'stats_card' | 'topic_card'
+  autoImage: boolean
 }
 
 export default function SettingsPage() {
@@ -52,6 +90,8 @@ export default function SettingsPage() {
     customPromptSuffix: '',
     approvalMode: false,
     timezone: 'Asia/Kolkata',
+    imageStyle: 'quote_card',
+    autoImage: true,
   })
   const [pillarsInput, setPillarsInput] = useState('')
 
@@ -224,6 +264,63 @@ export default function SettingsPage() {
               <p className="text-xs text-gray-400">
                 Schedule times are interpreted in this timezone
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Image Posts */}
+        <Card className="border-gray-200">
+          <CardHeader>
+            <CardTitle className="text-base">Image Posts</CardTitle>
+            <CardDescription>Control how image cards look when included with posts</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <Label>Image Style</Label>
+              <div className="grid grid-cols-3 gap-3">
+                {IMAGE_STYLES.map((style) => {
+                  const selected = prefs.imageStyle === style.value
+                  return (
+                    <button
+                      key={style.value}
+                      type="button"
+                      onClick={() =>
+                        setPrefs((p) => ({
+                          ...p,
+                          imageStyle: style.value as Preferences['imageStyle'],
+                        }))
+                      }
+                      className={`rounded-lg border-2 p-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                        selected
+                          ? 'border-indigo-500 bg-indigo-50'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      {style.preview}
+                      <p className={`mt-2 text-xs font-medium ${selected ? 'text-indigo-700' : 'text-gray-700'}`}>
+                        {style.label}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5 leading-tight">{style.description}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Auto-include image</Label>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Automatically include an image with every post
+                </p>
+                <p className="text-xs text-gray-400">
+                  For posts in approval mode, you can toggle per post.
+                </p>
+              </div>
+              <Switch
+                checked={prefs.autoImage}
+                onCheckedChange={(v) => setPrefs((p) => ({ ...p, autoImage: v }))}
+              />
             </div>
           </CardContent>
         </Card>

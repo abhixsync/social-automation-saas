@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
           creditsUsed: true,
           aiModel: true,
           errorMessage: true,
+          includeImage: true,
           publishedAt: true,
           scheduledFor: true,
           createdAt: true,

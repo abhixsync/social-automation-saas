@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { postToLinkedIn } from '@/lib/linkedin'
+import { postToLinkedIn, postToLinkedInWithImage } from '@/lib/linkedin'
+import { generatePostImage, type ImageStyle } from '@/lib/image-gen'
+
+const IMAGE_CREDITS = 5
 
 export async function POST(
   _req: NextRequest,
@@ -11,55 +14,103 @@ export async function POST(
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+  const userId = session.user.id
 
-  // Load post and verify ownership + status
-  const post = await prisma.post.findFirst({
-    where: { id, userId: session.user.id },
-  })
+  // Load post + user + prefs + account in parallel
+  const [post, user, prefs] = await Promise.all([
+    prisma.post.findFirst({ where: { id, userId } }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, plan: true, name: true, lifetimeFree: true, aiCreditsTotal: true, aiCreditsUsed: true },
+    }),
+    prisma.userPreferences.findUnique({
+      where: { userId },
+      select: { imageStyle: true, niche: true },
+    }),
+  ])
 
-  if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  if (!post || !user) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
   if (post.status !== 'pending_approval') {
-    return NextResponse.json(
-      { error: 'Post must be in pending_approval status to approve' },
-      { status: 400 },
-    )
+    return NextResponse.json({ error: 'Post must be in pending_approval status to approve' }, { status: 400 })
   }
 
-  // Load LinkedIn account and verify active + not expired
   const account = await prisma.linkedInAccount.findFirst({
-    where: { id: post.linkedInAccountId, userId: session.user.id, isActive: true },
+    where: { id: post.linkedInAccountId, userId, isActive: true },
+    select: { id: true, sub: true, accessTokenEncrypted: true, expiresAt: true, displayName: true },
   })
 
-  if (!account) {
-    return NextResponse.json({ error: 'LinkedIn account not found or inactive' }, { status: 404 })
-  }
+  if (!account) return NextResponse.json({ error: 'LinkedIn account not found or inactive' }, { status: 404 })
+  if (account.expiresAt < new Date()) return NextResponse.json({ error: 'LinkedIn token has expired. Please reconnect.' }, { status: 400 })
 
-  if (account.expiresAt < new Date()) {
-    return NextResponse.json({ error: 'LinkedIn token has expired. Please reconnect.' }, { status: 400 })
+  // Generate image if user wants it
+  const shouldPostImage = post.includeImage
+  let imageBuffer: Buffer | null = null
+  let imageCreditsCost = 0
+
+  if (shouldPostImage) {
+    // Check credits for image before generating
+    const remaining = user.aiCreditsTotal - user.aiCreditsUsed
+    if (remaining >= IMAGE_CREDITS) {
+      try {
+        imageBuffer = await generatePostImage({
+          style: (prefs?.imageStyle ?? 'quote_card') as ImageStyle,
+          content: post.generatedContent,
+          topic: post.topic,
+          niche: prefs?.niche ?? 'tech professional',
+          displayName: account.displayName ?? user.name ?? 'Professional',
+          plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
+        })
+        imageCreditsCost = IMAGE_CREDITS
+      } catch (imgErr) {
+        console.warn('[posts/approve] Image generation failed, falling back to text-only:', imgErr)
+        imageBuffer = null
+      }
+    }
+    // If not enough credits for image, silently fall back to text-only
   }
 
   try {
-    await postToLinkedIn(account.accessTokenEncrypted, account.sub, post.generatedContent)
+    // Deduct image credits atomically before posting (if image generated)
+    if (imageCreditsCost > 0) {
+      const result = await prisma.user.updateMany({
+        where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - imageCreditsCost } },
+        data: { aiCreditsUsed: { increment: imageCreditsCost } },
+      })
+      if (result.count === 0) {
+        // Credits ran out — fall back to text-only
+        imageBuffer = null
+        imageCreditsCost = 0
+      }
+    }
+
+    if (imageBuffer) {
+      await postToLinkedInWithImage(account.accessTokenEncrypted, account.sub, post.generatedContent, imageBuffer)
+    } else {
+      await postToLinkedIn(account.accessTokenEncrypted, account.sub, post.generatedContent)
+    }
 
     const updated = await prisma.post.update({
       where: { id },
-      data: { status: 'published', publishedAt: new Date() },
+      data: {
+        status: 'published',
+        publishedAt: new Date(),
+        includeImage: imageBuffer !== null,
+        imageStyle: imageBuffer ? (prefs?.imageStyle ?? 'quote_card') : null,
+        creditsUsed: post.creditsUsed + imageCreditsCost,
+      },
     })
 
     return NextResponse.json({ post: updated })
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+    const totalToRefund = post.creditsUsed + imageCreditsCost
 
-    // Mark failed + refund credits atomically (guard against going below 0)
     await prisma.$transaction([
-      prisma.post.update({
-        where: { id },
-        data: { status: 'failed', errorMessage },
-      }),
+      prisma.post.update({ where: { id }, data: { status: 'failed', errorMessage } }),
       prisma.user.updateMany({
-        where: { id: session.user.id, aiCreditsUsed: { gte: post.creditsUsed } },
-        data: { aiCreditsUsed: { decrement: post.creditsUsed } },
+        where: { id: userId, aiCreditsUsed: { gte: totalToRefund } },
+        data: { aiCreditsUsed: { decrement: totalToRefund } },
       }),
     ])
 

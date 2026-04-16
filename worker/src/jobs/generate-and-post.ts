@@ -1,7 +1,8 @@
 import type { Job } from 'bullmq'
 import { prisma } from '../lib/prisma.js'
 import { generatePost, pickTopic, countWords } from '../lib/ai.js'
-import { postToLinkedIn } from '../lib/linkedin.js'
+import { postToLinkedIn, postToLinkedInWithImage } from '../lib/linkedin.js'
+import { generatePostImage } from '../lib/image-gen.js'
 import { wordsToCredits } from '../lib/credits.js'
 import { sendPostReadyEmail } from '../lib/email.js'
 
@@ -24,11 +25,12 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         name: true,
         aiCreditsTotal: true,
         aiCreditsUsed: true,
+        lifetimeFree: true,
       },
     }),
     prisma.linkedInAccount.findUnique({
       where: { id: accountId },
-      select: { id: true, sub: true, accessTokenEncrypted: true, expiresAt: true, isActive: true },
+      select: { id: true, sub: true, accessTokenEncrypted: true, expiresAt: true, isActive: true, displayName: true },
     }),
     prisma.userPreferences.findUnique({
       where: { userId },
@@ -38,17 +40,20 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         contentPillars: true,
         customPromptSuffix: true,
         approvalMode: true,
+        imageStyle: true,
+        autoImage: true,
       },
     }),
-    // Last 20 published/approved posts — used to avoid repeating topics
+    // Recent posts for topic uniqueness — fetched with a placeholder take;
+    // actual take is computed after user loads (plan-aware lookback)
     prisma.post.findMany({
       where: {
         userId,
         status: { in: ['published', 'approved', 'pending_approval'] },
       },
       orderBy: { createdAt: 'desc' },
-      take: 20,
-      select: { topic: true, generatedContent: true },
+      take: 100, // upper bound; trimmed below based on plan
+      select: { topic: true },
     }),
   ])
 
@@ -85,7 +90,9 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
 
   // 4. Pick topic (avoid recently used pillars)
   const pillars = prefs?.contentPillars ?? []
-  const recentTopics = recentPosts.map((p) => p.topic).filter(Boolean)
+  // Plan-aware lookback: pro/lifetime free get 100 posts, free gets 20
+  const lookback = (user.lifetimeFree || user.plan === 'pro') ? 100 : 20
+  const recentTopics = recentPosts.slice(0, lookback).map((p) => p.topic).filter(Boolean)
   const topic = pickTopic(pillars, recentTopics)
   const niche = prefs?.niche ?? 'tech professional'
   const tone = prefs?.tone ?? 'professional'
@@ -147,6 +154,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
           creditsUsed,
           status: 'pending_approval',
           aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+          includeImage: prefs?.autoImage ?? true,
           scheduledFor: new Date(),
         },
       })
@@ -165,18 +173,45 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
     return
   }
 
-  // 7. Post to LinkedIn
+  // 7. Generate image if enabled
+  const shouldPostImage = prefs?.autoImage ?? true
+  let imageBuffer: Buffer | null = null
+
+  if (shouldPostImage) {
+    try {
+      imageBuffer = await generatePostImage({
+        style: (prefs?.imageStyle ?? 'quote_card') as 'quote_card' | 'stats_card' | 'topic_card',
+        content,
+        topic,
+        niche,
+        displayName: account.displayName ?? user.name ?? 'Professional',
+        plan: user.plan as 'free' | 'pro',
+      })
+    } catch (imgErr) {
+      // Image generation failure is non-fatal — fall back to text-only
+      console.warn(`[worker] Image generation failed, falling back to text-only:`, imgErr)
+      imageBuffer = null
+    }
+  }
+
+  const IMAGE_CREDITS = 5
+  const totalCredits = creditsUsed + (imageBuffer ? IMAGE_CREDITS : 0)
+
+  // 8. Post to LinkedIn
   try {
-    await postToLinkedIn(account.accessTokenEncrypted, account.sub, content)
+    if (imageBuffer) {
+      await postToLinkedInWithImage(account.accessTokenEncrypted, account.sub, content, imageBuffer)
+    } else {
+      await postToLinkedIn(account.accessTokenEncrypted, account.sub, content)
+    }
 
     // Atomic: post record + credit deduction with race guard
-    // If credits ran out concurrently, post is still recorded (already sent) with creditsUsed=0
     await prisma.$transaction(async (tx) => {
       const result = await tx.user.updateMany({
-        where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - creditsUsed } },
-        data: { aiCreditsUsed: { increment: creditsUsed } },
+        where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - totalCredits } },
+        data: { aiCreditsUsed: { increment: totalCredits } },
       })
-      const finalCredits = result.count > 0 ? creditsUsed : 0
+      const finalCredits = result.count > 0 ? totalCredits : 0
       await tx.post.create({
         data: {
           userId,
@@ -187,12 +222,14 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
           creditsUsed: finalCredits,
           status: 'published',
           aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+          includeImage: imageBuffer !== null,
+          imageStyle: imageBuffer ? ((prefs?.imageStyle ?? 'quote_card') as Parameters<typeof prisma.post.create>[0]['data']['imageStyle']) : null,
           publishedAt: new Date(),
         },
       })
     })
 
-    console.log(`[worker] ✅ Published post for user ${userId}`)
+    console.log(`[worker] ✅ Published post for user ${userId}${imageBuffer ? ' (with image)' : ''}`)
   } catch (err) {
     console.error(`[worker] LinkedIn post failed:`, err)
     await prisma.post.create({
@@ -205,6 +242,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         creditsUsed: 0,
         status: 'failed',
         aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+        includeImage: false,
         errorMessage: err instanceof Error ? err.message : 'LinkedIn post failed',
       },
     })

@@ -22,7 +22,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { RefreshCw, Trash2, CheckCircle, ChevronLeft, ChevronRight, Loader2, Eye, Pencil, Zap } from 'lucide-react'
+import { RefreshCw, Trash2, CheckCircle, ChevronLeft, ChevronRight, Loader2, Eye, Pencil, Zap, ImageIcon } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 
 interface Post {
   id: string
@@ -32,6 +33,7 @@ interface Post {
   creditsUsed: number
   status: string
   aiModel: string
+  includeImage: boolean
   createdAt: string
   publishedAt: string | null
   linkedInAccount: { displayName: string | null; profilePicture: string | null }
@@ -88,6 +90,10 @@ export default function PostsPage() {
   const [editMode, setEditMode] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [editLoading, setEditLoading] = useState(false)
+
+  // Per-post includeImage optimistic state: postId -> boolean
+  const [imageOverrides, setImageOverrides] = useState<Record<string, boolean>>({})
+  const [imageToggleLoading, setImageToggleLoading] = useState<Record<string, boolean>>({})
 
   // Generate Now state
   const [showGenerateDialog, setShowGenerateDialog] = useState(false)
@@ -192,6 +198,27 @@ export default function PostsPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to regenerate post', { id: toastId })
     } finally {
       setActionLoading((p) => { const n = { ...p }; delete n[post.id]; return n })
+    }
+  }
+
+  async function handleToggleImage(post: Post, newValue: boolean) {
+    const prev = imageOverrides[post.id] ?? post.includeImage
+    setImageOverrides((o) => ({ ...o, [post.id]: newValue }))
+    setImageToggleLoading((l) => ({ ...l, [post.id]: true }))
+    try {
+      const res = await fetch(`/api/posts/${post.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ includeImage: newValue }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to update')
+    } catch (err) {
+      setImageOverrides((o) => ({ ...o, [post.id]: prev }))
+      toast.error(err instanceof Error ? err.message : 'Failed to update image setting')
+    } finally {
+      setImageToggleLoading((l) => { const n = { ...l }; delete n[post.id]; return n })
     }
   }
 
@@ -350,6 +377,22 @@ export default function PostsPage() {
                               </span>
                             )}
                           </div>
+                          {post.status === 'pending_approval' && (
+                            <div className="flex items-center gap-2 mt-3">
+                              <ImageIcon className={`w-3.5 h-3.5 ${imageToggleLoading[post.id] ? 'text-gray-300' : 'text-gray-400'}`} />
+                              <span className="text-xs text-gray-500">Include image</span>
+                              <Switch
+                                size="sm"
+                                checked={imageOverrides[post.id] ?? post.includeImage}
+                                onCheckedChange={(checked) => handleToggleImage(post, checked)}
+                                disabled={imageToggleLoading[post.id] ?? false}
+                                className="ml-1"
+                              />
+                              {imageToggleLoading[post.id] && (
+                                <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2 flex-wrap sm:flex-shrink-0">

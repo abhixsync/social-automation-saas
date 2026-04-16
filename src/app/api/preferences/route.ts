@@ -10,6 +10,8 @@ const updateSchema = z.object({
   customPromptSuffix: z.string().max(500).nullable().optional(),
   approvalMode: z.boolean().optional(),
   timezone: z.string().min(1).max(100).optional(),
+  imageStyle: z.enum(['quote_card', 'stats_card', 'topic_card']).optional(),
+  autoImage: z.boolean().optional(),
 })
 
 export async function GET() {
@@ -51,6 +53,8 @@ export async function PUT(req: NextRequest) {
         customPromptSuffix: data.customPromptSuffix ?? null,
         approvalMode: data.approvalMode ?? false,
         timezone: data.timezone ?? 'Asia/Kolkata',
+        imageStyle: data.imageStyle ?? 'quote_card',
+        autoImage: data.autoImage ?? true,
       },
     })
 
