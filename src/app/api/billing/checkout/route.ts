@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { stripe, getPriceId, getOrCreateStripeCustomer } from '@/lib/stripe'
+import { getRazorpay, getPlanId } from '@/lib/razorpay'
 import { z } from 'zod'
-import type { Plan, Currency } from '@/generated/prisma/enums'
+import type { Currency } from '@/generated/prisma/enums'
 
 const schema = z.object({
-  plan: z.enum(['starter', 'growth', 'pro']),
+  plan: z.enum(['pro']),
 })
 
 export async function POST(req: NextRequest) {
@@ -26,42 +26,41 @@ export async function POST(req: NextRequest) {
         email: true,
         name: true,
         currency: true,
-        stripeCustomerId: true,
+        razorpayCustomerId: true,
       },
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    const customerId = await getOrCreateStripeCustomer(
-      user.id,
-      user.email,
-      user.name,
-      user.stripeCustomerId,
-    )
+    const currency = user.currency as Currency
 
-    // Persist customerId if newly created
-    if (!user.stripeCustomerId) {
+    let razorpayCustomerId = user.razorpayCustomerId
+    if (!razorpayCustomerId) {
+      const customer = await getRazorpay().customers.create({
+        name: user.name ?? '',
+        email: user.email ?? '',
+      })
+      razorpayCustomerId = customer.id
       await prisma.user.update({
         where: { id: user.id },
-        data: { stripeCustomerId: customerId },
+        data: { razorpayCustomerId },
       })
     }
 
-    const priceId = getPriceId(plan as Exclude<Plan, 'free'>, user.currency as Currency)
+    const planId = getPlanId(plan, currency)
 
-    const checkoutSession = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: 'subscription',
-      payment_method_types: ['card'],
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing?success=1`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing?cancelled=1`,
-      metadata: { userId: user.id, plan },
-      subscription_data: {
-        metadata: { userId: user.id, plan },
-      },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const subscription = await (getRazorpay().subscriptions.create as any)({
+      plan_id: planId,
+      customer_notify: 1,
+      quantity: 1,
+      total_count: 120,
+      customer_id: razorpayCustomerId,
     })
 
-    return NextResponse.json({ url: checkoutSession.url })
+    return NextResponse.json({
+      subscriptionId: subscription.id,
+      keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+    })
   } catch (err) {
     console.error('[billing/checkout]', err)
     return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 })

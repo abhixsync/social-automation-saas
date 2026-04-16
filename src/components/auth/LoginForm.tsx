@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Lock } from 'lucide-react'
 
 const schema = z.object({
   email: z.string().email('Invalid email'),
@@ -92,7 +93,12 @@ export default function LoginForm() {
             {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
           </div>
           <div className="space-y-1">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link href="/auth/forgot-password" className="text-xs text-gray-400 hover:text-gray-600">
+                Forgot password?
+              </Link>
+            </div>
             <Input id="password" type="password" autoComplete="current-password" {...register('password')} />
             {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
           </div>
@@ -101,6 +107,11 @@ export default function LoginForm() {
           </Button>
         </form>
       </CardContent>
+
+      <div className="text-xs text-gray-400 text-center mt-4 flex items-center justify-center gap-1 px-6 pb-2">
+        <Lock size={12} />
+        Your data is encrypted and never shared.
+      </div>
 
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">

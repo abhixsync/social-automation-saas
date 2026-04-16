@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ const plans: Plan[] = [
     posts: "~100 posts/mo",
     model: "Llama 3.3 70B",
     priceINR: "₹499",
-    priceUSD: "$6",
+    priceUSD: "$5.99",
     popular: false,
     free: false,
     features: [
@@ -60,7 +60,7 @@ const plans: Plan[] = [
     posts: "~250 posts/mo",
     model: "Llama 3.3 70B",
     priceINR: "₹999",
-    priceUSD: "$12",
+    priceUSD: "$11.99",
     popular: true,
     free: false,
     features: [
@@ -78,7 +78,7 @@ const plans: Plan[] = [
     posts: "~600 posts/mo",
     model: "Claude Sonnet",
     priceINR: "₹2,499",
-    priceUSD: "$29",
+    priceUSD: "$29.99",
     popular: false,
     free: false,
     features: [
@@ -110,6 +110,19 @@ function CheckIcon() {
 export default function PricingSection() {
   const [currency, setCurrency] = useState<Currency>("INR");
 
+  // Read persisted preference after mount to avoid SSR mismatch
+  useEffect(() => {
+    const saved = localStorage.getItem("crescova_currency");
+    if (saved === "INR" || saved === "USD") {
+      setCurrency(saved);
+    }
+  }, []);
+
+  function handleCurrencyChange(next: Currency) {
+    setCurrency(next);
+    localStorage.setItem("crescova_currency", next);
+  }
+
   return (
     <section id="pricing" className="bg-gray-50 py-20 sm:py-28">
       <div className="mx-auto max-w-5xl px-6">
@@ -128,7 +141,7 @@ export default function PricingSection() {
           {/* Currency toggle */}
           <div className="mt-8 inline-flex items-center rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
             <button
-              onClick={() => setCurrency("INR")}
+              onClick={() => handleCurrencyChange("INR")}
               className={`rounded-md px-5 py-1.5 text-sm font-medium transition-colors ${
                 currency === "INR"
                   ? "bg-indigo-600 text-white shadow-sm"
@@ -138,7 +151,7 @@ export default function PricingSection() {
               ₹ INR
             </button>
             <button
-              onClick={() => setCurrency("USD")}
+              onClick={() => handleCurrencyChange("USD")}
               className={`rounded-md px-5 py-1.5 text-sm font-medium transition-colors ${
                 currency === "USD"
                   ? "bg-indigo-600 text-white shadow-sm"

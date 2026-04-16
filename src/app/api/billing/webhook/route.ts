@@ -1,134 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe, buildPriceMap, getCreditsForPlan } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
+import { verifyWebhookSignature } from '@/lib/razorpay'
 import { resetMonthlyCredits } from '@/lib/credits'
-import { PLAN_CONFIG } from '@/types'
-import type Stripe from 'stripe'
-import type { Plan, Currency } from '@/generated/prisma/enums'
+import type { Currency } from '@/generated/prisma/enums'
+
+function getPlanFromPlanId(planId: string): 'pro' | null {
+  const currencies: Currency[] = ['INR', 'USD']
+  for (const currency of currencies) {
+    if (process.env[`RAZORPAY_PRO_PLAN_${currency}`] === planId) return 'pro'
+  }
+  return null
+}
 
 export async function POST(req: NextRequest) {
-  const body = await req.text()
-  const sig = req.headers.get('stripe-signature')
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+  const rawBody = await req.text()
+  const signature = req.headers.get('x-razorpay-signature')
 
-  if (!sig) {
-    return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing x-razorpay-signature header' }, { status: 400 })
   }
 
-  let event: Stripe.Event
-  try {
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
-  } catch (err) {
-    console.error('[webhook] Signature verification failed:', err)
+  const isValid = verifyWebhookSignature(rawBody, signature)
+  if (!isValid) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  const priceMap = buildPriceMap()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let event: any
+  try {
+    event = JSON.parse(rawBody)
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
 
   try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session
-        const userId = session.metadata?.userId
-        if (!userId) break
+    switch (event.event) {
+      case 'subscription.activated': {
+        const sub = event.payload.subscription.entity
+        const subscriptionId: string = sub.id
+        const planId: string = sub.plan_id
 
-        if (session.mode === 'payment') {
-          // Top-up credits purchase — atomic to prevent duplicate credits on webhook retry
-          const credits = parseInt(session.metadata?.credits ?? '0', 10)
-          if (credits > 0) {
-            const amount = session.amount_total ?? 0
-            const currency = (session.currency?.toUpperCase() ?? 'INR') as Currency
-            try {
-              await prisma.$transaction([
-                prisma.user.update({
-                  where: { id: userId },
-                  data: { aiCreditsTotal: { increment: credits } },
-                }),
-                prisma.creditTopup.create({
-                  data: {
-                    userId,
-                    credits,
-                    amount,
-                    currency,
-                    stripePaymentIntentId: session.payment_intent as string,
-                  },
-                }),
-              ])
-            } catch (txErr: unknown) {
-              // P2002 = unique constraint on stripePaymentIntentId — already processed
-              if ((txErr as { code?: string }).code === 'P2002') break
-              throw txErr
-            }
-          }
-        }
-        // Subscription mode handled by customer.subscription.created below
-        break
-      }
+        const plan = getPlanFromPlanId(planId)
+        if (!plan) break
 
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated': {
-        const sub = event.data.object as Stripe.Subscription
-        const priceId = sub.items.data[0]?.price?.id
-        const planInfo = priceMap.get(priceId ?? '')
-
-        // Look up user by Stripe customer ID
         const user = await prisma.user.findFirst({
-          where: { stripeCustomerId: sub.customer as string },
-          select: { id: true, aiCreditsTotal: true },
-        })
-        if (!user || !planInfo) break
-
-        const newCredits = getCreditsForPlan(planInfo.plan as Plan)
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            plan: planInfo.plan as Plan,
-            stripeSubscriptionId: sub.id,
+          where: {
+            OR: [
+              { razorpaySubscriptionId: subscriptionId },
+              { razorpayCustomerId: sub.customer_id },
+            ],
           },
-        })
-        await resetMonthlyCredits(user.id, newCredits)
-        break
-      }
-
-      case 'customer.subscription.deleted': {
-        const sub = event.data.object as Stripe.Subscription
-        const user = await prisma.user.findFirst({
-          where: { stripeCustomerId: sub.customer as string },
           select: { id: true },
         })
         if (!user) break
 
         await prisma.user.update({
           where: { id: user.id },
-          data: { plan: 'free', stripeSubscriptionId: null },
+          data: { plan, razorpaySubscriptionId: subscriptionId },
         })
-        await resetMonthlyCredits(user.id, PLAN_CONFIG.free.creditsPerMonth)
+        await resetMonthlyCredits(user.id, plan)
         break
       }
 
-      case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice
-        // Only reset credits on renewals — initial payment is handled by customer.subscription.created
-        if (invoice.billing_reason !== 'subscription_cycle') break
+      case 'subscription.charged': {
+        const sub = event.payload.subscription.entity
+        const subscriptionId: string = sub.id
+        const planId: string = sub.plan_id
 
-        const sub = invoice.parent?.subscription_details?.subscription
-        const subscriptionId = typeof sub === 'string' ? sub : (sub?.id ?? null)
-        if (!subscriptionId) break
+        const plan = getPlanFromPlanId(planId)
+        if (!plan) break
 
         const user = await prisma.user.findFirst({
-          where: { stripeSubscriptionId: subscriptionId },
-          select: { id: true, plan: true },
+          where: { razorpaySubscriptionId: subscriptionId },
+          select: { id: true },
         })
         if (!user) break
 
-        const newCredits = getCreditsForPlan(user.plan as Plan)
-        await resetMonthlyCredits(user.id, newCredits)
+        await resetMonthlyCredits(user.id, plan)
+        break
+      }
+
+      case 'subscription.cancelled':
+      case 'subscription.completed': {
+        const sub = event.payload.subscription.entity
+        const subscriptionId: string = sub.id
+
+        const user = await prisma.user.findFirst({
+          where: { razorpaySubscriptionId: subscriptionId },
+          select: { id: true },
+        })
+        if (!user) break
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { plan: 'free', razorpaySubscriptionId: null },
+        })
+        await resetMonthlyCredits(user.id, 'free')
+        break
+      }
+
+      case 'payment.captured': {
+        // Top-up payments are handled by the /api/billing/verify endpoint
         break
       }
     }
   } catch (err) {
-    console.error(`[webhook] Error handling ${event.type}:`, err)
-    return NextResponse.json({ error: 'Handler error' }, { status: 500 })
+    console.error(`[webhook] Error handling ${event?.event}:`, err)
+    // Return 200 anyway — Razorpay retries on non-200
   }
 
   return NextResponse.json({ received: true })

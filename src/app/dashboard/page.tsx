@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { FileText, Zap, Users, TrendingUp, CheckCircle2, Circle, ArrowRight } from 'lucide-react'
 import RecentPostsList from './RecentPostsList'
+import NotificationBanner from './NotificationBanner'
 
 
 export default async function DashboardPage() {
@@ -17,7 +18,7 @@ export default async function DashboardPage() {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [publishedThisMonth, linkedInAccounts, recentPosts, preferences, activeSchedule, totalPosts, dbUser] = await Promise.all([
+  const [publishedThisMonth, linkedInAccounts, recentPosts, preferences, activeSchedule, totalPosts, dbUser, unreadNotifications] = await Promise.all([
     prisma.post.count({
       where: { userId, status: 'published', publishedAt: { gte: startOfMonth } },
     }),
@@ -51,7 +52,13 @@ export default async function DashboardPage() {
     // Fetch fresh credits in the same round-trip — avoids a separate DB call
     prisma.user.findUnique({
       where: { id: userId },
-      select: { aiCreditsUsed: true, aiCreditsTotal: true, plan: true },
+      select: { aiCreditsUsed: true, aiCreditsTotal: true, plan: true, lifetimeFree: true },
+    }),
+    prisma.notification.findMany({
+      where: { userId, isRead: false },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: { id: true, message: true },
     }),
   ])
 
@@ -84,10 +91,11 @@ export default async function DashboardPage() {
     },
   ]
 
+  const lifetimeFree = dbUser?.lifetimeFree ?? session.user.lifetimeFree
   const creditsUsed = dbUser?.aiCreditsUsed ?? session.user.aiCreditsUsed
   const creditsTotal = dbUser?.aiCreditsTotal ?? session.user.aiCreditsTotal
   const creditsRemaining = creditsTotal - creditsUsed
-  const creditsPct = creditsTotal > 0 ? Math.min(100, (creditsUsed / creditsTotal) * 100) : 0
+  const creditsPct = lifetimeFree ? 0 : (creditsTotal > 0 ? Math.min(100, (creditsUsed / creditsTotal) * 100) : 0)
 
   const stats = [
     {
@@ -99,7 +107,7 @@ export default async function DashboardPage() {
     },
     {
       label: 'Credits Remaining',
-      value: creditsRemaining,
+      value: lifetimeFree ? '∞' : creditsRemaining,
       icon: Zap,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
@@ -122,6 +130,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
+
+      {/* In-app notifications (e.g. credit refresh) */}
+      {unreadNotifications.length > 0 && (
+        <NotificationBanner notifications={unreadNotifications} />
+      )}
 
       {/* Onboarding checklist — shown until all 3 steps complete */}
       {!allDone && (
@@ -216,31 +229,43 @@ export default async function DashboardPage() {
               <CardTitle className="text-base font-semibold text-gray-900">Credit Usage</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-500">Used</span>
-                  <span className="font-medium text-gray-900">
-                    {creditsUsed} / {creditsTotal}
-                  </span>
+              {lifetimeFree ? (
+                <div className="rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 px-4 py-4 flex items-center gap-3">
+                  <span className="text-3xl leading-none">∞</span>
+                  <div>
+                    <p className="text-sm font-semibold text-indigo-700">Lifetime Free</p>
+                    <p className="text-xs text-indigo-500 mt-0.5">Unlimited credits — no limits</p>
+                  </div>
                 </div>
-                <Progress value={creditsPct} className="h-2" />
-                <p className="text-xs text-gray-400 mt-1.5">{creditsRemaining} credits remaining</p>
-              </div>
+              ) : (
+                <>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-500">Used</span>
+                      <span className="font-medium text-gray-900">
+                        {creditsUsed} / {creditsTotal}
+                      </span>
+                    </div>
+                    <Progress value={creditsPct} className="h-2" />
+                    <p className="text-xs text-gray-400 mt-1.5">{creditsRemaining} credits remaining</p>
+                  </div>
 
-              <div className="pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Plan</p>
-                <Badge variant="secondary" className="capitalize bg-indigo-50 text-indigo-700 border-0">
-                  {dbUser?.plan ?? session.user.plan}
-                </Badge>
-              </div>
+                  <div className="pt-2 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 mb-1">Plan</p>
+                    <Badge variant="secondary" className="capitalize bg-indigo-50 text-indigo-700 border-0">
+                      {dbUser?.plan ?? session.user.plan}
+                    </Badge>
+                  </div>
 
-              {creditsRemaining < creditsTotal * 0.2 && (
-                <a
-                  href="/dashboard/billing"
-                  className="block text-center text-xs font-medium text-indigo-600 hover:text-indigo-800 py-2 px-3 bg-indigo-50 rounded-lg"
-                >
-                  Upgrade or top up credits →
-                </a>
+                  {creditsRemaining < creditsTotal * 0.2 && (
+                    <a
+                      href="/dashboard/billing"
+                      className="block text-center text-xs font-medium text-indigo-600 hover:text-indigo-800 py-2 px-3 bg-indigo-50 rounded-lg"
+                    >
+                      Upgrade or top up credits →
+                    </a>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

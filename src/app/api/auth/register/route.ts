@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { PLAN_CONFIG } from '@/types'
+import { getPlanCredits } from '@/lib/plan-settings'
 import { checkRateLimit, getClientIp } from '@/lib/ratelimit'
 import { sendWelcomeEmail } from '@/lib/email'
 
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12)
+    const freeCredits = await getPlanCredits('free')
 
     await prisma.user.create({
       data: {
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
         passwordHash,
         plan: 'free',
         currency,
-        aiCreditsTotal: PLAN_CONFIG.free.creditsPerMonth,
+        aiCreditsTotal: freeCredits,
         aiCreditsUsed: 0,
         creditsResetAt: new Date(),
       },

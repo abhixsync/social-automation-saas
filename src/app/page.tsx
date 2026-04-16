@@ -238,6 +238,9 @@ function Navbar() {
           <Link href="#pricing" className="text-sm text-gray-500 hover:text-gray-900">
             Pricing
           </Link>
+          <Link href="/pricing" className="text-sm text-gray-500 hover:text-gray-900">
+            Plans
+          </Link>
         </nav>
 
         <div className="flex items-center gap-3">

@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { wordsToCredits } from '@/types'
+import { getPlanCredits } from '@/lib/plan-settings'
+import type { Plan } from '@/types'
 
 /**
  * Check if a user has enough credits remaining.
@@ -11,10 +13,12 @@ export async function checkCredits(
 ): Promise<{ allowed: boolean; reason?: string; remaining?: number }> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { aiCreditsTotal: true, aiCreditsUsed: true, creditsResetAt: true },
+    select: { aiCreditsTotal: true, aiCreditsUsed: true, creditsResetAt: true, lifetimeFree: true },
   })
 
   if (!user) return { allowed: false, reason: 'User not found' }
+
+  if (user.lifetimeFree) return { allowed: true }
 
   const remaining = user.aiCreditsTotal - user.aiCreditsUsed
   const needed = wordsToCredits(estimatedWordCount)
@@ -40,6 +44,13 @@ export async function deductCredits(
 ): Promise<number> {
   const credits = wordsToCredits(wordCount)
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { lifetimeFree: true },
+  })
+
+  if (user?.lifetimeFree) return 0
+
   await prisma.user.update({
     where: { id: userId },
     data: { aiCreditsUsed: { increment: credits } },
@@ -49,20 +60,39 @@ export async function deductCredits(
 }
 
 /**
- * Reset monthly credits for a user (called by Stripe webhook on subscription renewal).
+ * Reset monthly credits for a user (called by Razorpay webhook on subscription renewal).
+ * Reads credit amount from SiteSetting (admin-configured), falls back to PLAN_CONFIG.
+ * Creates an in-app notification so the user knows their credits were refreshed.
  */
 export async function resetMonthlyCredits(
   userId: string,
-  newTotal: number,
+  plan: Plan,
 ): Promise<void> {
-  await prisma.user.update({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
-    data: {
-      aiCreditsUsed: 0,
-      aiCreditsTotal: newTotal,
-      creditsResetAt: new Date(),
-    },
+    select: { lifetimeFree: true },
   })
+
+  if (user?.lifetimeFree) return
+
+  const newTotal = await getPlanCredits(plan)
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: {
+        aiCreditsUsed: 0,
+        aiCreditsTotal: newTotal,
+        creditsResetAt: new Date(),
+      },
+    }),
+    prisma.notification.create({
+      data: {
+        userId,
+        message: `Your credits have been refreshed! You now have ${newTotal} credits for this month.`,
+      },
+    }),
+  ])
 }
 
 /**

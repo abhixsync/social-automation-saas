@@ -10,12 +10,13 @@ import { NAV_LINKS } from '@/lib/nav-links'
 interface SidebarProps {
   credits: { used: number; total: number }
   plan?: string
+  lifetimeFree?: boolean
 }
 
-export default function Sidebar({ credits, plan }: SidebarProps) {
+export default function Sidebar({ credits, plan, lifetimeFree }: SidebarProps) {
   const pathname = usePathname()
   const remaining = credits.total - credits.used
-  const pct = credits.total > 0 ? Math.min(100, (credits.used / credits.total) * 100) : 0
+  const pct = lifetimeFree ? 0 : (credits.total > 0 ? Math.min(100, (credits.used / credits.total) * 100) : 0)
 
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href
@@ -57,25 +58,35 @@ export default function Sidebar({ credits, plan }: SidebarProps) {
 
       {/* Credits bar */}
       <div className="px-4 py-4 border-t border-gray-100">
-        <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-          <span>AI Credits</span>
-          <span>
-            {remaining} / {credits.total} left
-          </span>
-        </div>
-        <Progress value={pct} className="h-1.5" />
-        {pct >= 80 && (
-          <p className="text-xs text-amber-600 mt-1.5">
-            Running low —{' '}
-            <Link href="/dashboard/billing" className="underline">
-              upgrade
-            </Link>
-          </p>
-        )}
-        {plan && (
-          <p className="text-xs text-gray-400 mt-2 capitalize">
-            Plan: <span className="font-medium text-gray-600">{plan}</span>
-          </p>
+        {lifetimeFree ? (
+          <div className="rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 px-3 py-2.5 flex items-center gap-2">
+            <span className="text-lg leading-none">∞</span>
+            <div>
+              <p className="text-xs font-semibold text-indigo-700">Lifetime Free</p>
+              <p className="text-xs text-indigo-500">Unlimited credits</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+              <span>AI Credits</span>
+              <span>{remaining} / {credits.total} left</span>
+            </div>
+            <Progress value={pct} className="h-1.5" />
+            {pct >= 80 && (
+              <p className="text-xs text-amber-600 mt-1.5">
+                Running low —{' '}
+                <Link href="/dashboard/billing" className="underline">
+                  upgrade
+                </Link>
+              </p>
+            )}
+            {plan && (
+              <p className="text-xs text-gray-400 mt-2 capitalize">
+                Plan: <span className="font-medium text-gray-600">{plan}</span>
+              </p>
+            )}
+          </>
         )}
       </div>
     </aside>

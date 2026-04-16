@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Lock } from 'lucide-react'
 
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -107,8 +108,24 @@ export default function SignupForm() {
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Creating account…' : 'Create account'}
           </Button>
+          <p className="text-xs text-gray-400 text-center mt-3">
+            By creating an account, you agree to our{' '}
+            <Link href="/legal/terms" className="underline hover:text-gray-600">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/legal/privacy" className="underline hover:text-gray-600">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </form>
       </CardContent>
+
+      <div className="text-xs text-gray-400 text-center mt-4 flex items-center justify-center gap-1 px-6 pb-2">
+        <Lock size={12} />
+        Your data is encrypted and never shared.
+      </div>
 
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">

@@ -18,9 +18,7 @@ const GROQ_MODELS: Record<string, string> = {
 }
 
 const PLAN_MODEL: Record<Plan, string> = {
-  free: 'llama_3_1_8b',
-  starter: 'llama_3_3_70b',
-  growth: 'llama_3_3_70b',
+  free: 'llama_3_3_70b',
   pro: 'claude_sonnet',
 }
 

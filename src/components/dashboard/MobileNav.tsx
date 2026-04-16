@@ -12,6 +12,7 @@ import { NAV_LINKS } from '@/lib/nav-links'
 
 interface MobileNavProps {
   credits: { used: number; total: number }
+  lifetimeFree?: boolean
   user: {
     name?: string | null
     email?: string | null
@@ -19,7 +20,7 @@ interface MobileNavProps {
   }
 }
 
-export default function MobileNav({ credits, user }: MobileNavProps) {
+export default function MobileNav({ credits, lifetimeFree, user }: MobileNavProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -28,7 +29,7 @@ export default function MobileNav({ credits, user }: MobileNavProps) {
     : user.email?.[0]?.toUpperCase() ?? 'U'
 
   const remaining = credits.total - credits.used
-  const pct = credits.total > 0 ? Math.min(100, (credits.used / credits.total) * 100) : 0
+  const pct = lifetimeFree ? 0 : (credits.total > 0 ? Math.min(100, (credits.used / credits.total) * 100) : 0)
 
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href
@@ -101,11 +102,23 @@ export default function MobileNav({ credits, user }: MobileNavProps) {
             </nav>
 
             <div className="px-4 py-3 border-t border-gray-100">
-              <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-                <span>AI Credits</span>
-                <span>{remaining} / {credits.total} left</span>
-              </div>
-              <Progress value={pct} className="h-1.5" />
+              {lifetimeFree ? (
+                <div className="rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 px-3 py-2.5 flex items-center gap-2">
+                  <span className="text-lg leading-none">∞</span>
+                  <div>
+                    <p className="text-xs font-semibold text-indigo-700">Lifetime Free</p>
+                    <p className="text-xs text-indigo-500">Unlimited credits</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                    <span>AI Credits</span>
+                    <span>{remaining} / {credits.total} left</span>
+                  </div>
+                  <Progress value={pct} className="h-1.5" />
+                </>
+              )}
             </div>
 
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">

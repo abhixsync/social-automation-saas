@@ -92,11 +92,23 @@ export async function proxy(request: NextRequest) {
   const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p))
   const isAuthRoute = AUTH_PATHS.some((p) => pathname.startsWith(p))
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
-    secureCookie: process.env.NODE_ENV === 'production',
-  })
+  // next-auth v5 changed the default cookie name to authjs.session-token
+  const cookieName = process.env.NODE_ENV === 'production'
+    ? '__Secure-authjs.session-token'
+    : 'authjs.session-token'
+
+  let token = null
+  try {
+    token = await getToken({
+      req: request,
+      secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+      secureCookie: process.env.NODE_ENV === 'production',
+      cookieName,
+    })
+  } catch {
+    // Missing secret or malformed token — treat as unauthenticated (safe default)
+    token = null
+  }
   const hasSession = !!token
 
   if (isProtected && !hasSession) {

@@ -22,7 +22,7 @@ export default async function DashboardLayout({
   try {
     dbUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { aiCreditsUsed: true, aiCreditsTotal: true, plan: true },
+      select: { aiCreditsUsed: true, aiCreditsTotal: true, plan: true, lifetimeFree: true },
     })
   } catch {
     // DB error — sidebar will show session credits (stale but usable)
@@ -37,14 +37,14 @@ export default async function DashboardLayout({
     <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* Desktop sidebar */}
       <div className="hidden md:flex md:flex-shrink-0">
-        <Sidebar credits={credits} plan={dbUser?.plan ?? session.user.plan} />
+        <Sidebar credits={credits} plan={dbUser?.plan ?? session.user.plan} lifetimeFree={dbUser?.lifetimeFree ?? session.user.lifetimeFree} />
       </div>
 
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Mobile top bar */}
         <div className="md:hidden">
-          <MobileNav credits={credits} user={session.user} />
+          <MobileNav credits={credits} lifetimeFree={dbUser?.lifetimeFree ?? session.user.lifetimeFree} user={session.user} />
         </div>
 
         {/* Desktop header */}

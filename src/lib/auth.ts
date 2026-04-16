@@ -14,6 +14,7 @@ declare module 'next-auth' {
     currency: Currency
     aiCreditsTotal: number
     aiCreditsUsed: number
+    lifetimeFree: boolean
   }
   interface Session {
     user: {
@@ -22,6 +23,7 @@ declare module 'next-auth' {
       currency: Currency
       aiCreditsTotal: number
       aiCreditsUsed: number
+      lifetimeFree: boolean
     } & { name?: string | null; email?: string | null; image?: string | null }
   }
 }
@@ -57,6 +59,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             currency: true,
             aiCreditsTotal: true,
             aiCreditsUsed: true,
+            lifetimeFree: true,
           },
         })
 
@@ -77,6 +80,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           currency: user.currency,
           aiCreditsTotal: user.aiCreditsTotal,
           aiCreditsUsed: user.aiCreditsUsed,
+          lifetimeFree: user.lifetimeFree,
         }
       },
     }),
@@ -118,6 +122,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.currency = user.currency as Currency
         token.aiCreditsTotal = user.aiCreditsTotal as number
         token.aiCreditsUsed = user.aiCreditsUsed as number
+        token.lifetimeFree = user.lifetimeFree as boolean
       }
 
       // Refresh on explicit update (e.g. after billing change)
@@ -129,6 +134,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             currency: true,
             aiCreditsTotal: true,
             aiCreditsUsed: true,
+            lifetimeFree: true,
           },
         })
         if (fresh) {
@@ -136,6 +142,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.currency = fresh.currency
           token.aiCreditsTotal = fresh.aiCreditsTotal
           token.aiCreditsUsed = fresh.aiCreditsUsed
+          token.lifetimeFree = fresh.lifetimeFree
         }
       }
 
@@ -150,6 +157,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.currency = token.currency as Currency
         session.user.aiCreditsTotal = token.aiCreditsTotal as number
         session.user.aiCreditsUsed = token.aiCreditsUsed as number
+        session.user.lifetimeFree = token.lifetimeFree as boolean
       }
       return session
     },

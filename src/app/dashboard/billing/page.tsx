@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { CheckCircle, Zap } from 'lucide-react'
 import BillingActions from './BillingActions'
 
-const PLAN_ORDER: Plan[] = ['free', 'starter', 'growth', 'pro']
+const PLAN_ORDER: Plan[] = ['free', 'pro']
 
 function modelLabel(model: string) {
   switch (model) {
@@ -31,15 +31,18 @@ export default async function BillingPage({
   const params = await searchParams
   const currentPlan = session.user.plan as Plan
   const currency = session.user.currency
+  const userName = session.user.name ?? undefined
+  const userEmail = session.user.email ?? undefined
 
   // Fetch fresh credits from DB — JWT is stale after worker deducts credits
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { aiCreditsUsed: true, aiCreditsTotal: true },
+    select: { aiCreditsUsed: true, aiCreditsTotal: true, lifetimeFree: true },
   })
-  const creditsUsed = dbUser?.aiCreditsUsed ?? session.user.aiCreditsUsed
-  const creditsTotal = dbUser?.aiCreditsTotal ?? session.user.aiCreditsTotal
-  const creditsPct = creditsTotal > 0 ? Math.min(100, (creditsUsed / creditsTotal) * 100) : 0
+  const lifetimeFree = dbUser?.lifetimeFree ?? false
+  const creditsUsed = lifetimeFree ? 0 : (dbUser?.aiCreditsUsed ?? session.user.aiCreditsUsed)
+  const creditsTotal = lifetimeFree ? Infinity : (dbUser?.aiCreditsTotal ?? session.user.aiCreditsTotal)
+  const creditsPct = lifetimeFree ? 0 : (creditsTotal > 0 ? Math.min(100, (creditsUsed / (creditsTotal as number)) * 100) : 0)
   const currentConfig = PLAN_CONFIG[currentPlan]
 
   const topupPrice = currency === 'INR' ? `₹${TOPUP_PRICE_INR}` : `$${(TOPUP_PRICE_USD / 100).toFixed(2)}`
@@ -50,6 +53,16 @@ export default async function BillingPage({
         <h2 className="text-xl font-semibold text-gray-900">Billing</h2>
         <p className="text-sm text-gray-500 mt-1">Manage your plan, credits, and billing</p>
       </div>
+
+      {lifetimeFree && (
+        <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 flex items-center gap-3">
+          <span className="text-2xl">∞</span>
+          <div>
+            <p className="text-sm font-semibold text-indigo-800">Lifetime Free</p>
+            <p className="text-xs text-indigo-600">You have unlimited credits. Enjoy!</p>
+          </div>
+        </div>
+      )}
 
       {params.success && (
         <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-700">
@@ -67,9 +80,9 @@ export default async function BillingPage({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className={`grid grid-cols-1 ${lifetimeFree ? '' : 'lg:grid-cols-3'} gap-6 mb-8`}>
         {/* Current plan summary */}
-        <Card className="border-indigo-200 bg-indigo-50/40 lg:col-span-2">
+        <Card className={`border-indigo-200 bg-indigo-50/40 ${lifetimeFree ? '' : 'lg:col-span-2'}`}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Current Plan</CardTitle>
@@ -83,12 +96,12 @@ export default async function BillingPage({
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-gray-600">Credits used this period</span>
                 <span className="font-semibold text-gray-900">
-                  {creditsUsed} / {creditsTotal}
+                  {lifetimeFree ? '∞ / ∞' : `${creditsUsed} / ${creditsTotal}`}
                 </span>
               </div>
               <Progress value={creditsPct} className="h-2" />
               <p className="text-xs text-gray-400 mt-1.5">
-                {creditsTotal - creditsUsed} credits remaining · 1 credit = 50 words
+                {lifetimeFree ? 'Unlimited credits · 1 credit = 50 words' : `${(creditsTotal as number) - creditsUsed} credits remaining · 1 credit = 50 words`}
               </p>
             </div>
 
@@ -98,7 +111,7 @@ export default async function BillingPage({
                 <p className="text-xs text-gray-400 mt-0.5">LinkedIn accounts</p>
               </div>
               <div className="text-center p-3 bg-white rounded-lg border border-gray-100">
-                <p className="text-lg font-bold text-gray-900">{currentConfig.creditsPerMonth}</p>
+                <p className="text-lg font-bold text-gray-900">{lifetimeFree ? '∞' : currentConfig.creditsPerMonth}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Credits / month</p>
               </div>
               <div className="text-center p-3 bg-white rounded-lg border border-gray-100">
@@ -107,42 +120,77 @@ export default async function BillingPage({
               </div>
             </div>
 
-            <BillingActions currentPlan={currentPlan} />
+            {!lifetimeFree && <BillingActions currentPlan={currentPlan} userName={userName} userEmail={userEmail} />}
           </CardContent>
         </Card>
 
-        {/* Credit top-up */}
-        <Card className="border-gray-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-500" />
-              Top Up Credits
-            </CardTitle>
-            <CardDescription>
-              Need more credits before your cycle resets?
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-amber-50 rounded-lg border border-amber-100 text-center">
-              <p className="text-2xl font-bold text-gray-900">{TOPUP_CREDITS}</p>
-              <p className="text-sm text-gray-500">credits</p>
-              <p className="text-lg font-semibold text-amber-600 mt-1">{topupPrice}</p>
-            </div>
-            <p className="text-xs text-gray-400 text-center">
-              ≈ {TOPUP_CREDITS * 50} words · never expire
-            </p>
-            <BillingActions currentPlan={currentPlan} mode="topup" />
-          </CardContent>
-        </Card>
+        {/* Credit top-up — hidden for lifetime free users */}
+        {!lifetimeFree && (
+          <Card className="border-gray-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500" />
+                Top Up Credits
+              </CardTitle>
+              <CardDescription>
+                Need more credits before your cycle resets?
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-amber-50 rounded-lg border border-amber-100 text-center">
+                <p className="text-2xl font-bold text-gray-900">{TOPUP_CREDITS}</p>
+                <p className="text-sm text-gray-500">credits</p>
+                <p className="text-lg font-semibold text-amber-600 mt-1">{topupPrice}</p>
+              </div>
+              <p className="text-xs text-gray-400 text-center">
+                ≈ {TOPUP_CREDITS * 50} words · never expire
+              </p>
+              <BillingActions currentPlan={currentPlan} mode="topup" userName={userName} userEmail={userEmail} />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Plan cards */}
       <div>
-        <h3 className="text-base font-semibold text-gray-900 mb-4">All Plans</h3>
+        <h3 className="text-base font-semibold text-gray-900 mb-4">
+          {lifetimeFree ? 'Your Plan' : 'All Plans'}
+        </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {PLAN_ORDER.map((planKey) => {
+          {lifetimeFree && (
+            <Card className="border-2 border-indigo-500 bg-gradient-to-b from-indigo-50/60 to-purple-50/40">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold">Lifetime Free</CardTitle>
+                  <Badge className="bg-indigo-100 text-indigo-700 border-0 text-xs hover:bg-indigo-100">
+                    Current
+                  </Badge>
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mt-1">∞</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <ul className="space-y-1.5">
+                  {[
+                    'Unlimited credits',
+                    'All LinkedIn accounts',
+                    'Best AI model',
+                  ].map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-indigo-600 font-medium text-center py-1">
+                  Your current plan
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {!lifetimeFree && PLAN_ORDER.map((planKey) => {
             const config = PLAN_CONFIG[planKey]
-            const isCurrent = planKey === currentPlan
+            const isCurrent = !lifetimeFree && planKey === currentPlan
             const priceINR = config.priceINR
             const priceUSD = config.priceUSD
             const price = currency === 'INR'
@@ -185,8 +233,8 @@ export default async function BillingPage({
                     ))}
                   </ul>
 
-                  {!isCurrent && planKey !== 'free' && (
-                    <BillingActions currentPlan={currentPlan} mode="upgrade" targetPlan={planKey} />
+                  {!lifetimeFree && !isCurrent && planKey !== 'free' && (
+                    <BillingActions currentPlan={currentPlan} mode="upgrade" targetPlan={planKey} userName={userName} userEmail={userEmail} />
                   )}
                   {isCurrent && (
                     <p className="text-xs text-indigo-600 font-medium text-center py-1">
@@ -199,6 +247,16 @@ export default async function BillingPage({
           })}
         </div>
       </div>
+
+      {currentPlan !== 'free' && !lifetimeFree && (
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <h3 className="text-sm font-medium text-gray-900 mb-1">Cancel Subscription</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            Your subscription will be cancelled immediately and your plan will revert to Free.
+          </p>
+          <BillingActions currentPlan={currentPlan} mode="cancel" />
+        </div>
+      )}
     </div>
   )
 }

@@ -444,7 +444,7 @@ export default function PostsPage() {
 
       {/* View / Edit full post dialog */}
       <Dialog open={!!viewPost} onOpenChange={(open) => !open && closeViewPost()}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-base">{viewPost?.topic}</DialogTitle>
             <DialogDescription>

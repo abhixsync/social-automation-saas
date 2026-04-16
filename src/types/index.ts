@@ -16,35 +16,19 @@ export interface PlanConfig {
 export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
   free: {
     name: 'Free',
-    creditsPerMonth: 40,      // 2,000 words ≈ 10 posts
+    creditsPerMonth: 1000,    // 50,000 words ≈ 200 posts (configurable via admin)
     maxAccounts: 1,
-    model: 'llama_3_1_8b',
+    model: 'llama_3_3_70b',
     priceINR: 0,
     priceUSD: 0,
   },
-  starter: {
-    name: 'Starter',
-    creditsPerMonth: 500,     // 25,000 words ≈ 100 posts
-    maxAccounts: 1,
-    model: 'llama_3_3_70b',
-    priceINR: 499,
-    priceUSD: 5.99,
-  },
-  growth: {
-    name: 'Growth',
-    creditsPerMonth: 1200,    // 60,000 words ≈ 250 posts
-    maxAccounts: 2,
-    model: 'llama_3_3_70b',
-    priceINR: 999,
-    priceUSD: 11.99,
-  },
   pro: {
     name: 'Pro',
-    creditsPerMonth: 3000,    // 150,000 words ≈ 600 posts
-    maxAccounts: 5,
+    creditsPerMonth: 10000,   // 500,000 words ≈ 2000 posts (configurable via admin)
+    maxAccounts: 10,
     model: 'claude_sonnet',
-    priceINR: 2499,
-    priceUSD: 29.99,
+    priceINR: 999,
+    priceUSD: 11.99,
   },
 }
 

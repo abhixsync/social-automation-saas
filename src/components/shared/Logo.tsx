@@ -29,7 +29,7 @@ export function LogoIcon({ size = 36 }: { size?: number }) {
       {/* Rounded square background */}
       <rect width="40" height="40" rx="10" fill="url(#crescova-grad)" />
 
-      {/* Sine wave — the "cadence" mark */}
+      {/* Sine wave — the "crescova" mark */}
       <path
         d="M5 20 C8 20, 9 10, 12.5 10 C16 10, 17 30, 20 30 C23 30, 24 10, 27.5 10 C31 10, 32 20, 35 20"
         stroke="white"
