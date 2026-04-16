@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd C:/Work/Learn/social-automation-saas && npx tsc --noEmit 2>&1\",\"timeout\":60000,\"description\":\"TypeScript check after Phase 2 auth files\"}",
-  "error": "Exit code 2\nsrc/app/api/auth/register/route.ts(42,45): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.\r\nsrc/app/auth/error/page.tsx(3,58): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.\r\nsrc/app/auth/error/page.tsx(31,23): error TS2322: Type '{ children: Element; asChild: true; variant: \"outline\"; }' is not assignable to type 'IntrinsicAttributes & ButtonProps & VariantProps<(props?: (ConfigVariants<{ variant: { default...",
-  "timestamp": "2026-04-08T07:45:34.436Z",
-  "retry_count": 1
-}
