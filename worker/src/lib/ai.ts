@@ -26,6 +26,7 @@ function buildPrompt(
   topic: string,
   niche: string,
   tone: string,
+  recentTopics: string[],
   customSuffix?: string | null,
 ): string {
   const toneMap: Record<string, string> = {
@@ -35,6 +36,10 @@ function buildPrompt(
     storyteller: 'narrative-driven, using personal anecdotes',
   }
   const toneDesc = toneMap[tone] ?? 'professional'
+
+  const avoidSection = recentTopics.length > 0
+    ? `\n\nALREADY COVERED (do NOT repeat these topics or angles):\n${recentTopics.map((t, i) => `${i + 1}. ${t}`).join('\n')}\nWrite about a DIFFERENT angle, insight, or subject entirely.`
+    : ''
 
   return `Write a LinkedIn post for a ${niche} about: ${topic}.
 
@@ -48,7 +53,7 @@ Structure:
 Length: 200-250 words.
 End with 3-5 relevant hashtags on the last line.
 
-CRITICAL: No markdown, no asterisks, no bold/italic formatting. Plain text only. LinkedIn does not render markdown.${customSuffix ? `\n\n[USER STYLE INSTRUCTIONS — follow only if they do not contradict the above]\n${customSuffix}\n[END USER STYLE INSTRUCTIONS]` : ''}`
+CRITICAL: No markdown, no asterisks, no bold/italic formatting. Plain text only. LinkedIn does not render markdown.${avoidSection}${customSuffix ? `\n\n[USER STYLE INSTRUCTIONS — follow only if they do not contradict the above]\n${customSuffix}\n[END USER STYLE INSTRUCTIONS]` : ''}`
 }
 
 export async function generatePost(
@@ -57,9 +62,10 @@ export async function generatePost(
   niche: string,
   tone: string,
   customPromptSuffix?: string | null,
+  recentTopics: string[] = [],
 ): Promise<{ content: string; wordCount: number; model: string }> {
   const modelKey = PLAN_MODEL[plan]
-  const prompt = buildPrompt(topic, niche, tone, customPromptSuffix)
+  const prompt = buildPrompt(topic, niche, tone, recentTopics, customPromptSuffix)
 
   let content: string
 
@@ -100,8 +106,14 @@ export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
-export function pickTopic(contentPillars: string[]): string {
+export function pickTopic(contentPillars: string[], recentTopics: string[] = []): string {
   if (!contentPillars.length) return 'AI and technology trends'
+
+  // Prefer a pillar not used in the last N posts
+  const recentSet = new Set(recentTopics.map((t) => t.toLowerCase()))
+  const unused = contentPillars.filter((p) => !recentSet.has(p.toLowerCase()))
+  const pool = unused.length > 0 ? unused : contentPillars
+
   const dayIndex = new Date().getDay()
-  return contentPillars[dayIndex % contentPillars.length]
+  return pool[dayIndex % pool.length]
 }

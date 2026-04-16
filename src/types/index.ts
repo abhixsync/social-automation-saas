@@ -34,9 +34,9 @@ export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
 
 // 1 credit = 50 words
 export const WORDS_PER_CREDIT = 50
-export const TOPUP_CREDITS = 100          // credits per top-up purchase
-export const TOPUP_PRICE_INR = 999        // ₹999
-export const TOPUP_PRICE_USD = 999        // $9.99 in cents
+export const TOPUP_CREDITS = 500          // credits per top-up purchase
+export const TOPUP_PRICE_INR = 99         // ₹99
+export const TOPUP_PRICE_USD = 99         // $0.99 in cents
 
 // Credits used = ceil(wordCount / WORDS_PER_CREDIT)
 export function wordsToCredits(wordCount: number): number {

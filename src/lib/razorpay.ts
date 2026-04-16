@@ -23,8 +23,8 @@ export function getPlanId(plan: 'pro', currency: Currency): string {
 
 // Top-up amounts in smallest unit (paise / cents)
 export const TOPUP_AMOUNT: Record<Currency, number> = {
-  INR: 99900,   // ₹999 in paise
-  USD: 999,     // $9.99 in cents
+  INR: 9900,    // ₹99 in paise
+  USD: 99,      // $0.99 in cents
 }
 
 // Currency to Razorpay currency code

@@ -13,8 +13,8 @@ interface JobData {
 export async function generateAndPost(job: Job<JobData>): Promise<void> {
   const { userId, accountId } = job.data
 
-  // 1. Load user + account + preferences
-  const [user, account, prefs] = await Promise.all([
+  // 1. Load user + account + preferences + recent topics (for uniqueness)
+  const [user, account, prefs, recentPosts] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -39,6 +39,16 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         customPromptSuffix: true,
         approvalMode: true,
       },
+    }),
+    // Last 20 published/approved posts — used to avoid repeating topics
+    prisma.post.findMany({
+      where: {
+        userId,
+        status: { in: ['published', 'approved', 'pending_approval'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { topic: true, generatedContent: true },
     }),
   ])
 
@@ -73,13 +83,14 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
     return
   }
 
-  // 4. Pick topic
+  // 4. Pick topic (avoid recently used pillars)
   const pillars = prefs?.contentPillars ?? []
-  const topic = pickTopic(pillars)
+  const recentTopics = recentPosts.map((p) => p.topic).filter(Boolean)
+  const topic = pickTopic(pillars, recentTopics)
   const niche = prefs?.niche ?? 'tech professional'
   const tone = prefs?.tone ?? 'professional'
 
-  // 5. Generate post
+  // 5. Generate post (pass recent topics so AI avoids repeating them)
   let content: string
   let wordCount: number
   let model: string
@@ -91,6 +102,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
       niche,
       tone,
       prefs?.customPromptSuffix,
+      recentTopics,
     )
     content = result.content
     wordCount = result.wordCount
