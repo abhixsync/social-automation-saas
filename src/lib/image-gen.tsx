@@ -1,4 +1,4 @@
-import { ImageResponse } from 'next/og'
+import { ImageResponse } from '@vercel/og'
 
 export type ImageStyle = 'quote_card' | 'stats_card' | 'topic_card'
 

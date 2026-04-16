@@ -197,41 +197,16 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   const IMAGE_CREDITS = 5
   const totalCredits = creditsUsed + (imageBuffer ? IMAGE_CREDITS : 0)
 
-  // 8. Post to LinkedIn
-  try {
-    if (imageBuffer) {
-      await postToLinkedInWithImage(account.accessTokenEncrypted, account.sub, content, imageBuffer)
-    } else {
-      await postToLinkedIn(account.accessTokenEncrypted, account.sub, content)
-    }
+  // 8. Deduct credits atomically BEFORE posting to LinkedIn.
+  // This ensures creditsUsed is never 0 on a published post.
+  // If credits are exhausted by a concurrent job, we abort rather than posting for free.
+  const creditResult = await prisma.user.updateMany({
+    where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - totalCredits } },
+    data: { aiCreditsUsed: { increment: totalCredits } },
+  })
 
-    // Atomic: post record + credit deduction with race guard
-    await prisma.$transaction(async (tx) => {
-      const result = await tx.user.updateMany({
-        where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - totalCredits } },
-        data: { aiCreditsUsed: { increment: totalCredits } },
-      })
-      const finalCredits = result.count > 0 ? totalCredits : 0
-      await tx.post.create({
-        data: {
-          userId,
-          linkedInAccountId: accountId,
-          topic,
-          generatedContent: content,
-          wordCount,
-          creditsUsed: finalCredits,
-          status: 'published',
-          aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
-          includeImage: imageBuffer !== null,
-          imageStyle: imageBuffer ? ((prefs?.imageStyle ?? 'quote_card') as Parameters<typeof prisma.post.create>[0]['data']['imageStyle']) : null,
-          publishedAt: new Date(),
-        },
-      })
-    })
-
-    console.log(`[worker] ✅ Published post for user ${userId}${imageBuffer ? ' (with image)' : ''}`)
-  } catch (err) {
-    console.error(`[worker] LinkedIn post failed:`, err)
+  if (creditResult.count === 0) {
+    console.log(`[worker] User ${userId} ran out of credits (concurrent job) — aborting LinkedIn post`)
     await prisma.post.create({
       data: {
         userId,
@@ -243,7 +218,57 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         status: 'failed',
         aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
         includeImage: false,
-        errorMessage: err instanceof Error ? err.message : 'LinkedIn post failed',
+        errorMessage: 'Insufficient credits',
+      },
+    })
+    return
+  }
+
+  // 9. Post to LinkedIn
+  try {
+    if (imageBuffer) {
+      await postToLinkedInWithImage(account.accessTokenEncrypted, account.sub, content, imageBuffer)
+    } else {
+      await postToLinkedIn(account.accessTokenEncrypted, account.sub, content)
+    }
+
+    await prisma.post.create({
+      data: {
+        userId,
+        linkedInAccountId: accountId,
+        topic,
+        generatedContent: content,
+        wordCount,
+        creditsUsed: totalCredits,
+        status: 'published',
+        aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+        includeImage: imageBuffer !== null,
+        imageStyle: imageBuffer ? ((prefs?.imageStyle ?? 'quote_card') as Parameters<typeof prisma.post.create>[0]['data']['imageStyle']) : null,
+        publishedAt: new Date(),
+      },
+    })
+
+    console.log(`[worker] ✅ Published post for user ${userId}${imageBuffer ? ' (with image)' : ''}`)
+  } catch (err) {
+    console.error(`[worker] LinkedIn post failed:`, err)
+    // Refund credits (best effort — failure here means user loses credits for a post that didn't go live)
+    await prisma.user.updateMany({
+      where: { id: userId, aiCreditsUsed: { gte: totalCredits } },
+      data: { aiCreditsUsed: { decrement: totalCredits } },
+    }).catch((refundErr) => console.error('[worker] Credit refund failed:', refundErr))
+
+    await prisma.post.create({
+      data: {
+        userId,
+        linkedInAccountId: accountId,
+        topic,
+        generatedContent: content,
+        wordCount,
+        creditsUsed: 0,
+        status: 'failed',
+        aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+        includeImage: false,
+        errorMessage: err instanceof Error ? err.message.slice(0, 500) : 'LinkedIn post failed',
       },
     })
   }

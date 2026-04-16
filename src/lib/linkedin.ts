@@ -83,6 +83,7 @@ export async function postToLinkedIn(
 
   const res = await fetch(`${LINKEDIN_API_BASE}/rest/posts`, {
     method: 'POST',
+    signal: AbortSignal.timeout(30_000),
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
@@ -109,6 +110,7 @@ export async function uploadImageToLinkedIn(
   // Step 1: Initialize upload
   const initRes = await fetch(`${LINKEDIN_API_BASE}/rest/images?action=initializeUpload`, {
     method: 'POST',
+    signal: AbortSignal.timeout(30_000),
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
@@ -137,6 +139,7 @@ export async function uploadImageToLinkedIn(
   // Step 2: Upload binary
   const uploadRes = await fetch(uploadUrl, {
     method: 'PUT',
+    signal: AbortSignal.timeout(60_000),
     headers: { 'Content-Type': 'image/png' },
     body: imageBuffer as unknown as BodyInit,
   })
@@ -179,6 +182,7 @@ export async function postToLinkedInWithImage(
 
   const res = await fetch(`${LINKEDIN_API_BASE}/rest/posts`, {
     method: 'POST',
+    signal: AbortSignal.timeout(30_000),
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',

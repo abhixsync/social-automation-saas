@@ -11,6 +11,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Prevent webpack from bundling @vercel/og so it can load its WASM binary
+  // correctly in Node.js serverless functions (API routes that use generatePostImage)
+  serverExternalPackages: ['@vercel/og'],
 
   images: {
     remotePatterns: [

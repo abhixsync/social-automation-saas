@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { wordsToCredits } from '@/types'
 
 export async function GET(
   _req: NextRequest,
@@ -93,7 +94,7 @@ export async function PATCH(
 
     const post = await prisma.post.findFirst({
       where: { id, userId: session.user.id },
-      select: { id: true, status: true },
+      select: { id: true, status: true, creditsUsed: true },
     })
 
     if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
@@ -102,10 +103,37 @@ export async function PATCH(
     }
 
     const updateData: Record<string, unknown> = {}
+
     if (generatedContent !== undefined) {
+      const newWordCount = generatedContent.trim().split(/\s+/).filter(Boolean).length
+      const newCreditsUsed = wordsToCredits(newWordCount)
+      const delta = newCreditsUsed - post.creditsUsed
+
       updateData.generatedContent = generatedContent
-      updateData.wordCount = generatedContent.trim().split(/\s+/).filter(Boolean).length
+      updateData.wordCount = newWordCount
+      updateData.creditsUsed = newCreditsUsed
+
+      // Adjust user credits atomically for the delta
+      if (delta > 0) {
+        const user = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { aiCreditsTotal: true, aiCreditsUsed: true },
+        })
+        const result = await prisma.user.updateMany({
+          where: { id: session.user.id, aiCreditsUsed: { lte: (user?.aiCreditsTotal ?? 0) - delta } },
+          data: { aiCreditsUsed: { increment: delta } },
+        })
+        if (result.count === 0) {
+          return NextResponse.json({ error: 'Insufficient credits for expanded content' }, { status: 402 })
+        }
+      } else if (delta < 0) {
+        await prisma.user.updateMany({
+          where: { id: session.user.id, aiCreditsUsed: { gte: -delta } },
+          data: { aiCreditsUsed: { decrement: -delta } },
+        })
+      }
     }
+
     if (includeImage !== undefined) {
       updateData.includeImage = includeImage
     }

@@ -15,7 +15,7 @@ export async function GET(
 
   const [post, user, prefs] = await Promise.all([
     prisma.post.findFirst({
-      where: { id, userId },
+      where: { id, userId, status: 'pending_approval' },
       select: { generatedContent: true, topic: true, imageStyle: true, linkedInAccountId: true },
     }),
     prisma.user.findUnique({
@@ -55,7 +55,8 @@ export async function GET(
         'Cache-Control': 'private, max-age=3600',
       },
     })
-  } catch {
+  } catch (err) {
+    console.error('[posts/image] Generation failed:', err)
     return NextResponse.json({ error: 'Image generation failed' }, { status: 500 })
   }
 }
