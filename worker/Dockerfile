@@ -6,7 +6,7 @@ WORKDIR /app
 COPY prisma/ ./prisma/
 COPY src/ ./src/
 
-# Install worker dependencies (including devDependencies for build)
+# Install worker dependencies (including devDependencies — tsx is needed at runtime)
 COPY worker/package.json worker/tsconfig.json ./worker/
 WORKDIR /app/worker
 RUN npm install
@@ -14,22 +14,18 @@ RUN npm install
 # Generate Prisma client into ../src/generated/prisma/
 RUN npx prisma generate --schema=../prisma/schema.prisma
 
-# Mark generated Prisma files as ESM — they use import.meta.url and must compile
-# as ESM so the ESM worker can import { PrismaClient } as a named export.
-# Without this, tsc uses the root package.json (no "type":"module") and outputs CJS,
-# causing "does not provide named export 'PrismaClient'" at runtime.
-RUN echo '{"type":"module"}' > /app/src/generated/prisma/package.json
-
 # Make @prisma packages visible to the generated client (ESM resolution walks up dirs)
 RUN mkdir -p /app/node_modules && cp -r /app/worker/node_modules/@prisma /app/node_modules/
 
-# Copy worker source and compile to dist/
+# Copy worker source (run via tsx — no tsc compilation needed)
 COPY worker/src/ ./src/
-RUN npm run build
 
 ENV NODE_ENV=production
 
 # Health check endpoint (default port 9000, override with WORKER_HEALTH_PORT)
 EXPOSE 9000
 
-CMD ["node", "dist/worker/src/index.js"]
+# tsx (esbuild-based TypeScript executor) handles ESM, CJS, extensionless imports,
+# and import.meta.url natively — eliminating all tsc+Node16 module resolution issues
+# with Prisma 7's TypeScript-first generated client.
+CMD ["node_modules/.bin/tsx", "src/index.ts"]
