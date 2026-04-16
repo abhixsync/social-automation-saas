@@ -14,17 +14,18 @@ RUN npm install
 # Generate Prisma client into ../src/generated/prisma/
 RUN npx prisma generate --schema=../prisma/schema.prisma
 
+# Mark generated Prisma files as ESM — they use import.meta.url and must compile
+# as ESM so the ESM worker can import { PrismaClient } as a named export.
+# Without this, tsc uses the root package.json (no "type":"module") and outputs CJS,
+# causing "does not provide named export 'PrismaClient'" at runtime.
+RUN echo '{"type":"module"}' > /app/src/generated/prisma/package.json
+
 # Make @prisma packages visible to the generated client (ESM resolution walks up dirs)
 RUN mkdir -p /app/node_modules && cp -r /app/worker/node_modules/@prisma /app/node_modules/
 
 # Copy worker source and compile to dist/
 COPY worker/src/ ./src/
 RUN npm run build
-
-# tsc roots from monorepo root due to cross-dir imports, so compiled output lands at
-# dist/worker/src/. Relative imports in compiled code expect ../../../src/generated/prisma/
-# to resolve to dist/src/generated/ — copy the generated client there.
-RUN mkdir -p dist/src && cp -r /app/src/generated dist/src/
 
 ENV NODE_ENV=production
 
