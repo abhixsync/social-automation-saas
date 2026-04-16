@@ -21,6 +21,11 @@ RUN mkdir -p /app/node_modules && cp -r /app/worker/node_modules/@prisma /app/no
 COPY worker/src/ ./src/
 RUN npm run build
 
+# tsc roots from monorepo root due to cross-dir imports, so compiled output lands at
+# dist/worker/src/. Relative imports in compiled code expect ../../../src/generated/prisma/
+# to resolve to dist/src/generated/ — copy the generated client there.
+RUN mkdir -p dist/src && cp -r /app/src/generated dist/src/
+
 ENV NODE_ENV=production
 
 # Health check endpoint (default port 9000, override with WORKER_HEALTH_PORT)
