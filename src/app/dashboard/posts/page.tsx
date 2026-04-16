@@ -378,18 +378,28 @@ export default function PostsPage() {
                             )}
                           </div>
                           {post.status === 'pending_approval' && (
-                            <div className="flex items-center gap-2 mt-3">
-                              <ImageIcon className={`w-3.5 h-3.5 ${imageToggleLoading[post.id] ? 'text-gray-300' : 'text-gray-400'}`} />
-                              <span className="text-xs text-gray-500">Include image</span>
-                              <Switch
-                                size="sm"
-                                checked={imageOverrides[post.id] ?? post.includeImage}
-                                onCheckedChange={(checked) => handleToggleImage(post, checked)}
-                                disabled={imageToggleLoading[post.id] ?? false}
-                                className="ml-1"
-                              />
-                              {imageToggleLoading[post.id] && (
-                                <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+                            <div className="mt-3 space-y-3">
+                              <div className="flex items-center gap-2">
+                                <ImageIcon className={`w-3.5 h-3.5 ${imageToggleLoading[post.id] ? 'text-gray-300' : 'text-gray-400'}`} />
+                                <span className="text-xs text-gray-500">Include image</span>
+                                <Switch
+                                  size="sm"
+                                  checked={imageOverrides[post.id] ?? post.includeImage}
+                                  onCheckedChange={(checked) => handleToggleImage(post, checked)}
+                                  disabled={imageToggleLoading[post.id] ?? false}
+                                  className="ml-1"
+                                />
+                                {imageToggleLoading[post.id] && (
+                                  <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+                                )}
+                              </div>
+                              {(imageOverrides[post.id] ?? post.includeImage) && (
+                                <img
+                                  src={`/api/posts/${post.id}/image`}
+                                  alt="Post image preview"
+                                  loading="lazy"
+                                  className="w-20 h-20 rounded-lg object-cover bg-gray-100"
+                                />
                               )}
                             </div>
                           )}
@@ -508,6 +518,18 @@ export default function PostsPage() {
           ) : (
             <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
               {viewPost?.generatedContent}
+            </div>
+          )}
+
+          {viewPost?.status === 'pending_approval' && (imageOverrides[viewPost.id] ?? viewPost.includeImage) && !editMode && (
+            <div className="border-t pt-4">
+              <p className="text-xs text-gray-500 font-medium mb-3">Image Preview</p>
+              <img
+                src={`/api/posts/${viewPost.id}/image`}
+                alt="LinkedIn post image"
+                loading="lazy"
+                className="w-56 h-56 mx-auto rounded-xl object-cover bg-gray-100"
+              />
             </div>
           )}
 
