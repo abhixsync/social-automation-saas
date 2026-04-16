@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getRazorpay, verifyOrderPayment } from '@/lib/razorpay'
-import { addTopupCredits } from '@/lib/credits'
+import { getRazorpay, verifyOrderPayment, TOPUP_AMOUNT } from '@/lib/razorpay'
 import { TOPUP_CREDITS } from '@/types'
 import type { Currency } from '@/generated/prisma/enums'
 
@@ -14,7 +13,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { razorpayPaymentId, razorpayOrderId, razorpaySignature, quantity } = body
+    const { razorpayPaymentId, razorpayOrderId, razorpaySignature } = body
 
     if (!razorpayPaymentId || !razorpayOrderId || !razorpaySignature) {
       return NextResponse.json({ error: 'Missing payment fields' }, { status: 400 })
@@ -39,25 +38,33 @@ export async function POST(req: NextRequest) {
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    const qty = Math.min(Math.max(Number(quantity ?? 1), 1), 10)
+    // Fetch verified order from Razorpay — derive qty from amount, not user input
+    // (prevents client-side quantity manipulation: pay qty=1, claim qty=10)
+    const order = await getRazorpay().orders.fetch(razorpayOrderId)
+    const currency = user.currency as Currency
+    const qty = Math.max(1, Math.round(Number(order.amount) / TOPUP_AMOUNT[currency]))
     const credits = qty * TOPUP_CREDITS
 
-    const order = await getRazorpay().orders.fetch(razorpayOrderId)
-
+    // Atomic: record topup AND increment credits in one transaction.
+    // Previously addTopupCredits was outside the transaction — if the server
+    // crashed after the record was created, idempotency would block any retry
+    // and the user would lose their credits permanently.
     await prisma.$transaction([
       prisma.creditTopup.create({
         data: {
           userId: user.id,
           credits,
           amount: Number(order.amount),
-          currency: user.currency as Currency,
+          currency,
           razorpayPaymentId,
           razorpayOrderId,
         },
       }),
+      prisma.user.update({
+        where: { id: user.id },
+        data: { aiCreditsTotal: { increment: credits } },
+      }),
     ])
-
-    await addTopupCredits(user.id, credits)
 
     return NextResponse.json({ ok: true, creditsAdded: credits })
   } catch (err) {
