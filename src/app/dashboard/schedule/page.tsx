@@ -9,7 +9,22 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Plus, X, Save, Calendar } from 'lucide-react'
+import { Loader2, Plus, X, Save, Calendar, Zap } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const DAYS = [
   { value: 1, label: 'Mon' },
@@ -53,6 +68,9 @@ export default function SchedulePage() {
   const [accounts, setAccounts] = useState<LinkedInAccount[]>([])
   const [schedules, setSchedules] = useState<Record<string, AccountScheduleState>>({})
   const [loading, setLoading] = useState(true)
+  const [generateLoading, setGenerateLoading] = useState(false)
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false)
+  const [selectedAccountId, setSelectedAccountId] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -178,6 +196,40 @@ export default function SchedulePage() {
     }
   }
 
+  async function handleGenerateNow() {
+    if (accounts.length === 0) {
+      toast.error('Connect a LinkedIn account first')
+      return
+    }
+    if (accounts.length === 1) {
+      await queueGenerate(accounts[0].id)
+    } else {
+      setSelectedAccountId(accounts[0].id)
+      setShowGenerateDialog(true)
+    }
+  }
+
+  async function queueGenerate(accountId: string) {
+    setGenerateLoading(true)
+    const toastId = toast.loading('Queuing post generation...')
+    try {
+      const res = await fetch('/api/posts/generate', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to queue')
+      toast.success('Post queued — check Posts in ~1 minute', { id: toastId })
+      setShowGenerateDialog(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to queue post', { id: toastId })
+    } finally {
+      setGenerateLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -188,12 +240,58 @@ export default function SchedulePage() {
 
   return (
     <div className="p-6 max-w-3xl">
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Schedule</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Configure when posts are automatically published for each LinkedIn account
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Schedule</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Configure when posts are automatically published for each LinkedIn account
+          </p>
+        </div>
+        {accounts.length > 0 && (
+          <Button
+            onClick={handleGenerateNow}
+            disabled={generateLoading}
+            size="sm"
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
+            {generateLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
+            Generate Post Now
+          </Button>
+        )}
       </div>
+
+      {/* Multi-account generate dialog */}
+      <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Post Now</DialogTitle>
+            <DialogDescription>Choose which LinkedIn account to generate a post for.</DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.displayName ?? 'LinkedIn Account'}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowGenerateDialog(false)}>Cancel</Button>
+            <Button
+              onClick={() => queueGenerate(selectedAccountId)}
+              disabled={generateLoading || !selectedAccountId}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              {generateLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
+              Generate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {accounts.length === 0 ? (
         <Card className="border-gray-200">

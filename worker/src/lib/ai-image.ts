@@ -1,5 +1,3 @@
-import OpenAI from 'openai'
-
 /**
  * Generate an AI image using DALL-E 3 based on the post topic and niche.
  * Returns the image as a Buffer, or throws on failure.
@@ -13,6 +11,8 @@ export async function generateAIImage(
     throw new Error('OPENAI_API_KEY not configured')
   }
 
+  // Dynamic import so missing package doesn't crash worker on startup
+  const { default: OpenAI } = await import('openai')
   const openai = new OpenAI({ apiKey })
 
   const prompt = `Professional LinkedIn image about "${topic}" for a ${niche}. Clean, minimal, corporate style. Abstract or conceptual — no text overlay, no words, no letters. High quality, suitable for a professional social media post.`

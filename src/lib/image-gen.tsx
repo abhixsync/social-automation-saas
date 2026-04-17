@@ -10,7 +10,7 @@ function getFont(): ArrayBuffer | null {
 // Extract the hook line (first sentence) from a LinkedIn post
 function extractHook(content: string): string {
   const firstLine = content.split('\n')[0].trim()
-  return firstLine.length > 120 ? firstLine.slice(0, 117) + '…' : firstLine
+  return firstLine.length > 120 ? firstLine.slice(0, 117) + '...' : firstLine
 }
 
 // Parse the most prominent stat/number from post content
@@ -113,9 +113,9 @@ export async function generatePostImage(opts: {
       const hook = extractHook(content)
       jsx = (
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: `linear-gradient(135deg, ${from}, ${to})`, padding: '80px', fontFamily, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-          <div style={{ display: 'flex', fontSize: 18, color: 'rgba(255,255,255,0.6)', marginBottom: 32 }}>❝</div>
+          <div style={{ display: 'flex', fontSize: 18, color: 'rgba(255,255,255,0.6)', marginBottom: 32 }}>"</div>
           <div style={{ display: 'flex', fontSize: hook.length > 80 ? 42 : 52, fontWeight: 600, color: 'white', textAlign: 'center', lineHeight: 1.3 }}>{hook}</div>
-          <div style={{ display: 'flex', marginTop: 48, fontSize: 22, color: 'rgba(255,255,255,0.7)' }}>— {displayName}</div>
+          <div style={{ display: 'flex', marginTop: 48, fontSize: 22, color: 'rgba(255,255,255,0.7)' }}>- {displayName}</div>
           {showProfilePic && profilePictureUrl && <img src={profilePictureUrl} width={64} height={64} style={{ position: 'absolute', bottom: 32, left: 40, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.3)' }} />}
           {showWatermark && <div style={{ display: 'flex', position: 'absolute', bottom: 32, right: 40, fontSize: 18, color: wmColor }}>Crescova</div>}
         </div>
@@ -125,8 +125,8 @@ export async function generatePostImage(opts: {
     jsx = (
       <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: `linear-gradient(135deg, ${from}, ${to})`, padding: '80px', fontFamily, justifyContent: 'center', position: 'relative' }}>
         <div style={{ display: 'flex', fontSize: 20, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 4, marginBottom: 24 }}>{niche}</div>
-        <div style={{ display: 'flex', fontSize: 64, fontWeight: 700, color: 'white', lineHeight: 1.2 }}>{topic.length > 60 ? topic.slice(0, 57) + '…' : topic}</div>
-        <div style={{ display: 'flex', marginTop: 60, fontSize: 24, color: 'rgba(255,255,255,0.75)' }}>— {displayName}</div>
+        <div style={{ display: 'flex', fontSize: 64, fontWeight: 700, color: 'white', lineHeight: 1.2 }}>{topic.length > 60 ? topic.slice(0, 57) + '...' : topic}</div>
+        <div style={{ display: 'flex', marginTop: 60, fontSize: 24, color: 'rgba(255,255,255,0.75)' }}>- {displayName}</div>
         {showProfilePic && profilePictureUrl && <img src={profilePictureUrl} width={64} height={64} style={{ position: 'absolute', bottom: 32, left: 40, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.3)' }} />}
         {showWatermark && <div style={{ display: 'flex', position: 'absolute', bottom: 32, right: 40, fontSize: 18, color: wmColor }}>Crescova</div>}
       </div>
@@ -137,7 +137,7 @@ export async function generatePostImage(opts: {
       <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: '#ffffff', padding: '100px', fontFamily, justifyContent: 'center', position: 'relative' }}>
         <div style={{ display: 'flex', width: 60, height: 4, background: accentColor, marginBottom: 40, borderRadius: 2 }} />
         <div style={{ display: 'flex', fontSize: hook.length > 80 ? 44 : 56, fontWeight: 700, color: '#1a1a2e', lineHeight: 1.25 }}>{hook}</div>
-        <div style={{ display: 'flex', marginTop: 48, fontSize: 24, color: '#6b7280' }}>— {displayName}</div>
+        <div style={{ display: 'flex', marginTop: 48, fontSize: 24, color: '#6b7280' }}>- {displayName}</div>
         <div style={{ display: 'flex', marginTop: 8, fontSize: 18, color: accentColor, textTransform: 'uppercase', letterSpacing: 3 }}>{niche}</div>
         {showProfilePic && profilePictureUrl && <img src={profilePictureUrl} width={64} height={64} style={{ position: 'absolute', bottom: 40, left: 100, borderRadius: '50%', border: `3px solid ${accentColor}` }} />}
         {showWatermark && <div style={{ display: 'flex', position: 'absolute', bottom: 32, right: 40, fontSize: 18, color: wmColor }}>Crescova</div>}
@@ -149,7 +149,7 @@ export async function generatePostImage(opts: {
       <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: 'linear-gradient(180deg, #1a1a2e, #16213e)', padding: '100px', fontFamily, justifyContent: 'center', position: 'relative' }}>
         <div style={{ display: 'flex', width: 60, height: 4, background: accentColor, marginBottom: 40, borderRadius: 2 }} />
         <div style={{ display: 'flex', fontSize: hook.length > 80 ? 44 : 56, fontWeight: 700, color: '#f1f5f9', lineHeight: 1.25 }}>{hook}</div>
-        <div style={{ display: 'flex', marginTop: 48, fontSize: 24, color: '#94a3b8' }}>— {displayName}</div>
+        <div style={{ display: 'flex', marginTop: 48, fontSize: 24, color: '#94a3b8' }}>- {displayName}</div>
         <div style={{ display: 'flex', marginTop: 8, fontSize: 18, color: accentColor, textTransform: 'uppercase', letterSpacing: 3 }}>{niche}</div>
         {showProfilePic && profilePictureUrl && <img src={profilePictureUrl} width={64} height={64} style={{ position: 'absolute', bottom: 40, left: 100, borderRadius: '50%', border: `3px solid ${accentColor}` }} />}
         {showWatermark && <div style={{ display: 'flex', position: 'absolute', bottom: 32, right: 40, fontSize: 18, color: wmColor }}>Crescova</div>}
@@ -159,7 +159,7 @@ export async function generatePostImage(opts: {
     const bullets = extractBullets(content)
     jsx = (
       <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: `linear-gradient(135deg, ${from}, ${to})`, padding: '80px', fontFamily, justifyContent: 'center', position: 'relative' }}>
-        <div style={{ display: 'flex', fontSize: 48, fontWeight: 700, color: 'white', lineHeight: 1.2, marginBottom: 40 }}>{topic.length > 50 ? topic.slice(0, 47) + '…' : topic}</div>
+        <div style={{ display: 'flex', fontSize: 48, fontWeight: 700, color: 'white', lineHeight: 1.2, marginBottom: 40 }}>{topic.length > 50 ? topic.slice(0, 47) + '...' : topic}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {bullets.map((b, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
@@ -178,9 +178,9 @@ export async function generatePostImage(opts: {
     const hook = extractHook(content)
     jsx = (
       <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: `linear-gradient(135deg, ${from}, ${to})`, padding: '80px', fontFamily, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-        <div style={{ display: 'flex', fontSize: 18, color: 'rgba(255,255,255,0.6)', marginBottom: 32 }}>❝</div>
+        <div style={{ display: 'flex', fontSize: 18, color: 'rgba(255,255,255,0.6)', marginBottom: 32 }}>"</div>
         <div style={{ display: 'flex', fontSize: hook.length > 80 ? 42 : 52, fontWeight: 600, color: 'white', textAlign: 'center', lineHeight: 1.3 }}>{hook}</div>
-        <div style={{ display: 'flex', marginTop: 48, fontSize: 22, color: 'rgba(255,255,255,0.7)' }}>— {displayName}</div>
+        <div style={{ display: 'flex', marginTop: 48, fontSize: 22, color: 'rgba(255,255,255,0.7)' }}>- {displayName}</div>
         {showProfilePic && profilePictureUrl && <img src={profilePictureUrl} width={64} height={64} style={{ position: 'absolute', bottom: 32, left: 40, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.3)' }} />}
         {showWatermark && <div style={{ display: 'flex', position: 'absolute', bottom: 32, right: 40, fontSize: 18, color: wmColor }}>Crescova</div>}
       </div>
