@@ -4,6 +4,7 @@ import { getPlanCredits } from '@/lib/plan-settings'
 import type { Plan } from '@/types'
 
 export const IMAGE_CREDITS = 5
+export const AI_IMAGE_CREDITS = 20
 
 /**
  * Check if a user has enough credits remaining.

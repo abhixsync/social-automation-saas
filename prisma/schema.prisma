@@ -51,6 +51,7 @@ enum ImageStyle {
   minimal_dark
   list_card
   stock_photo
+  ai_generated
 }
 
 // ─────────────────────────────────────────────

@@ -4,7 +4,8 @@ import { generatePost, pickTopic, countWords } from '../lib/ai.js'
 import { postToLinkedIn, postToLinkedInWithImage } from '../lib/linkedin.js'
 import { generatePostImage } from '../lib/image-gen.js'
 import { fetchStockPhoto } from '../lib/pexels.js'
-import { wordsToCredits } from '../lib/credits.js'
+import { generateAIImage } from '../lib/ai-image.js'
+import { wordsToCredits, IMAGE_CREDITS, AI_IMAGE_CREDITS } from '../lib/credits.js'
 import { sendPostReadyEmail } from '../lib/email.js'
 
 interface JobData {
@@ -178,11 +179,19 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
 
   // 7. Generate image if enabled
   const shouldPostImage = prefs?.autoImage ?? true
+  const imgStyle = prefs?.imageStyle ?? 'quote_card'
   let imageBuffer: Buffer | null = null
 
   if (shouldPostImage) {
-    const imgStyle = prefs?.imageStyle ?? 'quote_card'
-    if (imgStyle === 'stock_photo') {
+    if (imgStyle === 'ai_generated') {
+      // AI-generated image via DALL-E 3
+      try {
+        imageBuffer = await generateAIImage(topic, niche)
+      } catch (aiErr) {
+        console.warn(`[worker] DALL-E image generation failed, falling back to text-only:`, aiErr)
+        imageBuffer = null
+      }
+    } else if (imgStyle === 'stock_photo') {
       // Fetch stock photo from Pexels
       imageBuffer = await fetchStockPhoto(topic, niche)
       if (!imageBuffer) console.warn(`[worker] Pexels returned no photo, falling back to text-only`)
@@ -207,8 +216,8 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
     }
   }
 
-  const IMAGE_CREDITS = 5
-  const totalCredits = creditsUsed + (imageBuffer ? IMAGE_CREDITS : 0)
+  const imgCredits = (imgStyle === 'ai_generated') ? AI_IMAGE_CREDITS : IMAGE_CREDITS
+  const totalCredits = creditsUsed + (imageBuffer ? imgCredits : 0)
 
   // 8. Deduct credits atomically BEFORE posting to LinkedIn.
   // This ensures creditsUsed is never 0 on a published post.
