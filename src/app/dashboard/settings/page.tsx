@@ -230,11 +230,8 @@ export default function SettingsPage() {
       setSavedImageStyle(prefs.imageStyle)
       if (isFirstSetup) {
         setIsFirstSetup(false)
-        toast.success('Preferences saved!', {
-          description: 'Continue your setup from the dashboard.',
-          action: { label: 'Dashboard →', onClick: () => router.push('/dashboard') },
-          duration: 7000,
-        })
+        toast.success('Preferences saved! Redirecting to dashboard…')
+        router.push('/dashboard')
       } else {
         toast.success('Settings saved')
       }

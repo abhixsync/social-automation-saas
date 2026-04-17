@@ -640,12 +640,14 @@ export default function PostsPage() {
           </DialogHeader>
 
           {editMode ? (
-            <Textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="min-h-64 text-sm leading-relaxed resize-none"
-              maxLength={5000}
-            />
+            <div className="overflow-y-auto max-h-[60vh]">
+              <Textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="min-h-64 text-sm leading-relaxed resize-none"
+                maxLength={5000}
+              />
+            </div>
           ) : (
             <div className="overflow-y-auto max-h-[60vh]">
               <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">

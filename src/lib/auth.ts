@@ -4,7 +4,7 @@ import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
-import { PLAN_CONFIG } from '@/types'
+import { getPlanCredits } from '@/lib/plan-settings'
 import type { Plan, Currency } from '@/generated/prisma/enums'
 
 // Extend NextAuth types
@@ -166,12 +166,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     // New Google OAuth users: set defaults
     async createUser({ user }) {
+      const freeCredits = await getPlanCredits('free')
       await prisma.user.update({
         where: { id: user.id! },
         data: {
           plan: 'free',
           currency: 'INR',
-          aiCreditsTotal: PLAN_CONFIG.free.creditsPerMonth,
+          aiCreditsTotal: freeCredits,
           aiCreditsUsed: 0,
           creditsResetAt: new Date(),
         },

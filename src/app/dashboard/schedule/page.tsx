@@ -181,11 +181,8 @@ export default function SchedulePage() {
       const wasNew = schedules[accountId]?.isNew ?? false
       setSchedules((prev) => ({ ...prev, [accountId]: { ...prev[accountId], dirty: false, isNew: false } }))
       if (wasNew) {
-        toast.success('Schedule saved!', {
-          description: 'Continue your setup from the dashboard.',
-          action: { label: 'Dashboard →', onClick: () => router.push('/dashboard') },
-          duration: 7000,
-        })
+        toast.success('Setup complete! Redirecting to dashboard…')
+        router.push('/dashboard')
       } else {
         toast.success('Schedule saved')
       }

@@ -168,9 +168,9 @@ export default async function BillingPage({
           </div>
 
           {/* Right column: plan cards filling full height */}
-          <div className="flex flex-col lg:w-3/5">
+          <div className="flex flex-col lg:w-3/5 flex-1">
             <h3 className="text-base font-semibold text-gray-900 mb-4">All Plans</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1 auto-rows-fr">
               {PLAN_ORDER.map((planKey) => {
                 const config = PLAN_CONFIG[planKey]
                 const isCurrent = planKey === currentPlan
@@ -203,7 +203,7 @@ export default async function BillingPage({
                 return (
                   <Card
                     key={planKey}
-                    className={`border-2 transition-colors relative flex flex-col ${
+                    className={`border-2 transition-colors relative flex flex-col h-full ${
                       isCurrent
                         ? 'border-indigo-500 bg-indigo-50/20'
                         : isPro
