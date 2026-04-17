@@ -42,7 +42,7 @@ export async function DELETE(
   try {
     const post = await prisma.post.findFirst({
       where: { id, userId: session.user.id },
-      select: { id: true, status: true, creditsUsed: true },
+      select: { id: true, status: true },
     })
 
     if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
@@ -51,18 +51,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Cannot delete a published post' }, { status: 400 })
     }
 
-    // Refund credits when deleting a pending_approval post
-    if (post.status === 'pending_approval' && post.creditsUsed > 0) {
-      await prisma.$transaction([
-        prisma.post.delete({ where: { id } }),
-        prisma.user.updateMany({
-          where: { id: session.user.id, aiCreditsUsed: { gte: post.creditsUsed } },
-          data: { aiCreditsUsed: { decrement: post.creditsUsed } },
-        }),
-      ])
-    } else {
-      await prisma.post.delete({ where: { id } })
-    }
+    // Credits are non-refundable on delete — AI generation already ran and consumed compute.
+    await prisma.post.delete({ where: { id } })
 
     return NextResponse.json({ message: 'Post deleted' })
   } catch (err) {
