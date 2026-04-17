@@ -1,31 +1,22 @@
 import { ImageResponse } from '@vercel/og'
+import fs from 'fs'
+import path from 'path'
 
 export type ImageStyle = 'quote_card' | 'stats_card' | 'topic_card'
 
-// Cache font between requests (module-level, lives for the process lifetime).
-// Returns null if fetch fails — image generation continues with @vercel/og built-in fonts.
-let _fontPromise: Promise<ArrayBuffer | null> | null = null
-function getFont(): Promise<ArrayBuffer | null> {
-  if (_fontPromise) return _fontPromise
-  _fontPromise = (async () => {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 12_000)
-    try {
-      const res = await fetch(
-        'https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2',
-        { signal: controller.signal },
-      )
-      if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`)
-      return await res.arrayBuffer()
-    } catch (err) {
-      _fontPromise = null // allow retry on next request
-      console.warn('[image-gen] Font fetch failed, falling back to built-in font:', err)
-      return null // non-fatal
-    } finally {
-      clearTimeout(timeout)
-    }
-  })()
-  return _fontPromise
+// Load Inter TTF from worker/fonts/ (bundled locally — avoids WOFF2 CDN which Satori rejects).
+// Cached after first load for the process lifetime.
+let _font: ArrayBuffer | null | undefined = undefined
+function getFont(): ArrayBuffer | null {
+  if (_font !== undefined) return _font
+  try {
+    const buf = fs.readFileSync(path.join(process.cwd(), 'fonts', 'Inter-Regular.ttf'))
+    _font = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
+  } catch (err) {
+    console.warn('[image-gen] Font load failed, using built-in font:', err)
+    _font = null
+  }
+  return _font
 }
 
 // Extract the hook line (first sentence) from a LinkedIn post
@@ -67,7 +58,7 @@ export async function generatePostImage(opts: {
   plan: 'free' | 'pro'
 }): Promise<Buffer> {
   const { style, content, topic, niche, displayName, plan } = opts
-  const font = await getFont()
+  const font = getFont()
   const [from, to] = GRADIENTS[style]
   const showWatermark = plan === 'free'
   const fontFamily = font ? 'Inter' : 'sans-serif'
