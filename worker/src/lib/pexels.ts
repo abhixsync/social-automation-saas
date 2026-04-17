@@ -12,6 +12,35 @@ interface PexelsResponse {
 }
 
 /**
+ * Use Claude Haiku to generate a concrete, visual Pexels search query
+ * from the post topic and niche. Falls back to a simple heuristic.
+ */
+async function buildImageQuery(topic: string, niche: string): Promise<string> {
+  try {
+    const groqKey = process.env.GROQ_API_KEY
+    if (!groqKey) throw new Error('no key')
+    const { default: Groq } = await import('groq-sdk')
+    const client = new Groq({ apiKey: groqKey })
+    const msg = await client.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      max_tokens: 20,
+      messages: [{
+        role: 'user',
+        content: `Give me a 2-4 word Pexels stock photo search query for a LinkedIn post about "${topic}" in the "${niche}" niche. Reply with ONLY the search keywords — no punctuation, no explanation. Make it concrete and visual; avoid proper nouns and brand names.`,
+      }],
+    })
+    const text = msg.choices[0]?.message?.content?.trim().replace(/["""]/g, '') ?? ''
+    if (text.length > 2 && text.length < 80) return text
+  } catch {
+    // fall through to heuristic
+  }
+  // Heuristic fallback: keep all words (including short ones like "AI") + first niche word
+  const topicWords = topic.split(/\s+/).filter((w) => w.length > 1).slice(0, 3)
+  const nicheWord = niche.split(/\s+/)[0]
+  return [...topicWords, nicheWord].join(' ')
+}
+
+/**
  * Fetch a relevant stock photo from Pexels based on topic keywords.
  * Returns the image as a Buffer, or null if no result / API error.
  */
@@ -25,9 +54,8 @@ export async function fetchStockPhoto(
     return null
   }
 
-  // Build search query: first 3 meaningful words of topic + "professional"
-  const words = topic.split(/\s+/).filter((w) => w.length > 2).slice(0, 3)
-  const query = [...words, 'professional'].join(' ')
+  const query = await buildImageQuery(topic, niche)
+  console.log(`[pexels] image search query: "${query}" (topic: "${topic}")`)
 
   try {
     const url = new URL(PEXELS_API_URL)
