@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, Save } from 'lucide-react'
+import { Loader2, Save, Info } from 'lucide-react'
 
 const IMAGE_STYLES = [
   {
@@ -169,6 +169,7 @@ export default function SettingsPage() {
   const [pillarsInput, setPillarsInput] = useState('')
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null)
   const [isFirstSetup, setIsFirstSetup] = useState(false)
+  const [savedImageStyle, setSavedImageStyle] = useState<Preferences['imageStyle']>('quote_card')
 
   const isDirty = savedSnapshot !== null && serializeState(prefs, pillarsInput) !== savedSnapshot
 
@@ -186,6 +187,7 @@ export default function SettingsPage() {
           setPrefs(p)
           setPillarsInput(pi)
           setSavedSnapshot(serializeState(p, pi))
+          setSavedImageStyle(p.imageStyle)
           // Treat as first-time setup if niche hasn't been filled in yet
           setIsFirstSetup(!p.niche)
         } else {
@@ -223,6 +225,7 @@ export default function SettingsPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed to save')
       setSavedSnapshot(serializeState(prefs, pillarsInput))
+      setSavedImageStyle(prefs.imageStyle)
       if (isFirstSetup) {
         setIsFirstSetup(false)
         toast.success('Preferences saved!', {
@@ -409,6 +412,15 @@ export default function SettingsPage() {
                   )
                 })}
               </div>
+
+              {prefs.imageStyle !== savedImageStyle && (
+                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50 border border-amber-200 mt-3">
+                  <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700 leading-relaxed">
+                    <span className="font-semibold">Heads up!</span> Any posts currently waiting for your approval will also show this new image style when you preview them. This won&apos;t affect posts already published to LinkedIn.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
