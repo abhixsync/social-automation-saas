@@ -72,7 +72,7 @@ export default async function DashboardPage() {
       done: hasAccount,
       title: 'Connect your LinkedIn account',
       description: 'Link your LinkedIn so Crescova can post on your behalf.',
-      href: '/dashboard/accounts',
+      href: '/api/linkedin/connect?return_to=/dashboard',
       cta: 'Connect LinkedIn',
     },
     {

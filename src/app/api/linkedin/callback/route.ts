@@ -71,11 +71,13 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    // Clear the state cookie
-    const response = NextResponse.redirect(
-      `${appUrl}/dashboard/accounts?connected=1`,
-    )
+    // Redirect to return_to (from setup flow) or default accounts page
+    const returnTo = req.cookies.get('li_return_to')?.value ?? null
+    const redirectUrl = new URL(returnTo ?? '/dashboard/accounts', appUrl)
+    redirectUrl.searchParams.set('connected', '1')
+    const response = NextResponse.redirect(redirectUrl.toString())
     response.cookies.delete('li_oauth_state')
+    if (returnTo) response.cookies.delete('li_return_to')
     return response
   } catch (err) {
     console.error('[linkedin/callback]', err)

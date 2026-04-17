@@ -80,6 +80,19 @@ interface Preferences {
   autoImage: boolean
 }
 
+function serializeState(p: Preferences, pillars: string) {
+  return JSON.stringify({
+    niche: p.niche,
+    tone: p.tone,
+    customPromptSuffix: p.customPromptSuffix ?? '',
+    approvalMode: p.approvalMode,
+    timezone: p.timezone,
+    imageStyle: p.imageStyle,
+    autoImage: p.autoImage,
+    pillars: pillars.split(',').map((s) => s.trim()).filter(Boolean).join('|'),
+  })
+}
+
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -94,6 +107,9 @@ export default function SettingsPage() {
     autoImage: true,
   })
   const [pillarsInput, setPillarsInput] = useState('')
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null)
+
+  const isDirty = savedSnapshot !== null && serializeState(prefs, pillarsInput) !== savedSnapshot
 
   useEffect(() => {
     async function load() {
@@ -102,8 +118,10 @@ export default function SettingsPage() {
         if (res.ok) {
           const json = await res.json()
           const p: Preferences = json.preferences ?? json
+          const pi = (p.contentPillars ?? []).join(', ')
           setPrefs(p)
-          setPillarsInput((p.contentPillars ?? []).join(', '))
+          setPillarsInput(pi)
+          setSavedSnapshot(serializeState(p, pi))
         }
       } catch {
         // preferences may not exist yet — use defaults
@@ -130,6 +148,7 @@ export default function SettingsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed to save')
+      setSavedSnapshot(serializeState(prefs, pillarsInput))
       toast.success('Settings saved')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save settings')
@@ -328,7 +347,7 @@ export default function SettingsPage() {
         <div className="flex justify-end">
           <Button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !isDirty}
             className="bg-indigo-600 hover:bg-indigo-700"
           >
             {saving ? (
