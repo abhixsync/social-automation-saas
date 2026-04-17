@@ -34,6 +34,7 @@ interface Post {
   status: string
   aiModel: string
   includeImage: boolean
+  isCarousel: boolean
   customImageUrl: string | null
   createdAt: string
   publishedAt: string | null
@@ -101,6 +102,11 @@ export default function PostsPage() {
   // Track custom image URLs locally for optimistic UI (postId -> url | null)
   const [customImageUrls, setCustomImageUrls] = useState<Record<string, string | null>>({})
 
+  // Carousel preview state: postId -> slide data URIs
+  const [carouselSlides, setCarouselSlides] = useState<Record<string, string[]>>({})
+  const [carouselSlideIndex, setCarouselSlideIndex] = useState<Record<string, number>>({})
+  const [carouselLoading, setCarouselLoading] = useState<Record<string, boolean>>({})
+
   // Generate Now state
   const [showGenerateDialog, setShowGenerateDialog] = useState(false)
   const [generateAccounts, setGenerateAccounts] = useState<LinkedInAccount[]>([])
@@ -141,12 +147,32 @@ export default function PostsPage() {
     setViewPost(post)
     setEditMode(false)
     setEditContent(post.generatedContent)
+    if (post.isCarousel && post.status === 'pending_approval') {
+      fetchCarouselSlides(post)
+    }
   }
 
   function closeViewPost() {
     setViewPost(null)
     setEditMode(false)
     setEditContent('')
+  }
+
+  async function fetchCarouselSlides(post: Post) {
+    if (carouselSlides[post.id] || carouselLoading[post.id]) return
+    setCarouselLoading((l) => ({ ...l, [post.id]: true }))
+    try {
+      const res = await fetch(`/api/posts/${post.id}/carousel-preview`, { credentials: 'include' })
+      const json = await res.json()
+      if (res.ok && json.slides?.length) {
+        setCarouselSlides((s) => ({ ...s, [post.id]: json.slides }))
+        setCarouselSlideIndex((i) => ({ ...i, [post.id]: 0 }))
+      }
+    } catch {
+      // silently fail — preview is optional
+    } finally {
+      setCarouselLoading((l) => { const n = { ...l }; delete n[post.id]; return n })
+    }
   }
 
   async function handleSaveEdit() {
@@ -625,7 +651,52 @@ export default function PostsPage() {
               <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                 {viewPost?.generatedContent}
               </div>
-              {viewPost?.status === 'pending_approval' && (imageOverrides[viewPost.id] ?? viewPost.includeImage) && (
+              {viewPost?.status === 'pending_approval' && viewPost.isCarousel && (
+                <div className="border-t pt-4 mt-4">
+                  <p className="text-xs text-gray-500 font-medium mb-3">Carousel Preview</p>
+                  {carouselLoading[viewPost.id] ? (
+                    <div className="flex flex-col items-center justify-center gap-2 h-64 rounded-xl bg-gradient-to-br from-purple-400 to-indigo-500 w-64 mx-auto">
+                      <Loader2 className="w-8 h-8 text-white/60 animate-spin" />
+                      <span className="text-white/60 text-xs">Generating slides…</span>
+                    </div>
+                  ) : carouselSlides[viewPost.id]?.length ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="relative w-64 h-64 mx-auto rounded-xl overflow-hidden">
+                        <img
+                          src={carouselSlides[viewPost.id][carouselSlideIndex[viewPost.id] ?? 0]}
+                          alt={`Slide ${(carouselSlideIndex[viewPost.id] ?? 0) + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setCarouselSlideIndex((i) => ({ ...i, [viewPost!.id]: Math.max(0, (i[viewPost!.id] ?? 0) - 1) }))}
+                          disabled={(carouselSlideIndex[viewPost.id] ?? 0) === 0}
+                          className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-30"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <span className="text-xs text-gray-500">
+                          {(carouselSlideIndex[viewPost.id] ?? 0) + 1} / {carouselSlides[viewPost.id].length}
+                        </span>
+                        <button
+                          onClick={() => setCarouselSlideIndex((i) => ({ ...i, [viewPost!.id]: Math.min(carouselSlides[viewPost!.id].length - 1, (i[viewPost!.id] ?? 0) + 1) }))}
+                          disabled={(carouselSlideIndex[viewPost.id] ?? 0) === carouselSlides[viewPost.id].length - 1}
+                          className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-30"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2 h-64 rounded-xl bg-gradient-to-br from-purple-400 to-indigo-500 w-64 mx-auto">
+                      <ImageIcon className="w-10 h-10 text-white/60" />
+                      <span className="text-white/50 text-xs">Preview unavailable</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {viewPost?.status === 'pending_approval' && !viewPost.isCarousel && (imageOverrides[viewPost.id] ?? viewPost.includeImage) && (
                 <div className="border-t pt-4 mt-4">
                   <p className="text-xs text-gray-500 font-medium mb-3">Image Preview</p>
                   <div className="relative w-64 h-64 mx-auto rounded-xl overflow-hidden">

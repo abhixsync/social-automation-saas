@@ -170,6 +170,7 @@ export default function SettingsPage() {
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null)
   const [isFirstSetup, setIsFirstSetup] = useState(false)
   const [savedImageStyle, setSavedImageStyle] = useState<Preferences['imageStyle']>('quote_card')
+  const [savedCarouselMode, setSavedCarouselMode] = useState(false)
 
   const isDirty = savedSnapshot !== null && serializeState(prefs, pillarsInput) !== savedSnapshot
 
@@ -188,6 +189,7 @@ export default function SettingsPage() {
           setPillarsInput(pi)
           setSavedSnapshot(serializeState(p, pi))
           setSavedImageStyle(p.imageStyle)
+          setSavedCarouselMode(p.carouselMode)
           // Treat as first-time setup if niche hasn't been filled in yet
           setIsFirstSetup(!p.niche)
         } else {
@@ -504,6 +506,14 @@ export default function SettingsPage() {
                 onCheckedChange={(v) => setPrefs((p) => ({ ...p, carouselMode: v }))}
               />
             </div>
+            {prefs.carouselMode && !savedCarouselMode && (
+              <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  <span className="font-semibold">Heads up!</span> Carousel mode costs <span className="font-semibold">25 extra credits per post</span> on top of the standard generation cost. Each post generates multiple slides that are published as a PDF document on LinkedIn.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

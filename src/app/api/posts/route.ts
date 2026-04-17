@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
           aiModel: true,
           errorMessage: true,
           includeImage: true,
+          isCarousel: true,
           publishedAt: true,
           scheduledFor: true,
           createdAt: true,
