@@ -55,41 +55,73 @@ export async function generatePostImage(opts: {
 
   if (style === 'stats_card') {
     const stat = extractStat(content)
-    if (!stat) {
-      // Fall back to quote card if no stat found
-      return generatePostImage({ ...opts, style: 'quote_card' })
-    }
-    jsx = (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          width: '100%',
-          height: '100%',
-          background: `linear-gradient(135deg, ${from}, ${to})`,
-          padding: '80px',
-          fontFamily,
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative',
-        }}
-      >
-        <div style={{ display: 'flex', fontSize: 160, fontWeight: 700, color: 'white', lineHeight: 1 }}>
-          {stat.number}
-        </div>
-        <div style={{ display: 'flex', fontSize: 36, color: 'rgba(255,255,255,0.85)', marginTop: 24, textAlign: 'center' }}>
-          {stat.label}
-        </div>
-        <div style={{ display: 'flex', marginTop: 60, fontSize: 22, color: 'rgba(255,255,255,0.65)' }}>
-          {displayName} · {niche}
-        </div>
-        {showWatermark && (
-          <div style={{ display: 'flex', position: 'absolute', bottom: 32, right: 40, fontSize: 18, color: 'rgba(255,255,255,0.3)' }}>
-            Crescova
+    if (stat) {
+      jsx = (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            height: '100%',
+            background: `linear-gradient(135deg, ${from}, ${to})`,
+            padding: '80px',
+            fontFamily,
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative',
+          }}
+        >
+          <div style={{ display: 'flex', fontSize: 160, fontWeight: 700, color: 'white', lineHeight: 1 }}>
+            {stat.number}
           </div>
-        )}
-      </div>
-    )
+          <div style={{ display: 'flex', fontSize: 36, color: 'rgba(255,255,255,0.85)', marginTop: 24, textAlign: 'center' }}>
+            {stat.label}
+          </div>
+          <div style={{ display: 'flex', marginTop: 60, fontSize: 22, color: 'rgba(255,255,255,0.65)' }}>
+            {displayName} · {niche}
+          </div>
+          {showWatermark && (
+            <div style={{ display: 'flex', position: 'absolute', bottom: 32, right: 40, fontSize: 18, color: 'rgba(255,255,255,0.3)' }}>
+              Crescova
+            </div>
+          )}
+        </div>
+      )
+    } else {
+      // No stat found — render hook text on the stats_card gradient so user's chosen style is preserved
+      const hook = extractHook(content)
+      jsx = (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            height: '100%',
+            background: `linear-gradient(135deg, ${from}, ${to})`,
+            padding: '80px',
+            fontFamily,
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative',
+          }}
+        >
+          <div style={{ display: 'flex', fontSize: 18, color: 'rgba(255,255,255,0.6)', marginBottom: 32 }}>
+            ❝
+          </div>
+          <div style={{ display: 'flex', fontSize: hook.length > 80 ? 42 : 52, fontWeight: 600, color: 'white', textAlign: 'center', lineHeight: 1.3 }}>
+            {hook}
+          </div>
+          <div style={{ display: 'flex', marginTop: 48, fontSize: 22, color: 'rgba(255,255,255,0.7)' }}>
+            — {displayName}
+          </div>
+          {showWatermark && (
+            <div style={{ display: 'flex', position: 'absolute', bottom: 32, right: 40, fontSize: 18, color: 'rgba(255,255,255,0.3)' }}>
+              Crescova
+            </div>
+          )}
+        </div>
+      )
+    }
   } else if (style === 'topic_card') {
     jsx = (
       <div
