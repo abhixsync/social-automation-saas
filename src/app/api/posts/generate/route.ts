@@ -40,17 +40,24 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Check credits
+    // Atomically reserve 1 credit to prevent unbounded queue flooding.
+    // The worker will deduct the real cost and refund the 1-credit reservation.
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { aiCreditsUsed: true, aiCreditsTotal: true },
+      select: { aiCreditsUsed: true, aiCreditsTotal: true, lifetimeFree: true },
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    if (user.aiCreditsUsed >= user.aiCreditsTotal) {
-      return NextResponse.json(
-        { error: 'No credits remaining. Please upgrade or top up.' },
-        { status: 402 },
-      )
+    if (!user.lifetimeFree) {
+      const reservation = await prisma.user.updateMany({
+        where: { id: session.user.id, aiCreditsUsed: { lt: user.aiCreditsTotal } },
+        data: { aiCreditsUsed: { increment: 1 } },
+      })
+      if (reservation.count === 0) {
+        return NextResponse.json(
+          { error: 'No credits remaining. Please upgrade or top up.' },
+          { status: 402 },
+        )
+      }
     }
 
     // Enqueue one-off generation job (same worker as scheduled posts)

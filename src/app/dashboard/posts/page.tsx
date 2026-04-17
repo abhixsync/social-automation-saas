@@ -485,7 +485,11 @@ export default function PostsPage() {
                                         disabled={uploadLoading[post.id]}
                                         onChange={(e) => {
                                           const f = e.target.files?.[0]
-                                          if (f) handleUploadImage(post, f)
+                                          if (f && f.size > 5 * 1024 * 1024) {
+                                            toast.error('Image must be under 5 MB')
+                                          } else if (f) {
+                                            handleUploadImage(post, f)
+                                          }
                                           e.target.value = ''
                                         }}
                                       />

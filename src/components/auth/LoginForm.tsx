@@ -22,7 +22,8 @@ type FormData = z.infer<typeof schema>
 export default function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  const rawCallback = searchParams.get('callbackUrl')
+  const callbackUrl = rawCallback && rawCallback.startsWith('/') && !rawCallback.startsWith('//') ? rawCallback : '/dashboard'
   const [error, setError] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
 

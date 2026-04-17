@@ -88,11 +88,13 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
     return
   }
 
-  // 3. Check credits
-  const remaining = user.aiCreditsTotal - user.aiCreditsUsed
-  if (remaining <= 0) {
-    console.log(`[worker] User ${userId} has no credits remaining`)
-    return
+  // 3. Check credits (lifetimeFree users bypass all credit limits)
+  if (!user.lifetimeFree) {
+    const remaining = user.aiCreditsTotal - user.aiCreditsUsed
+    if (remaining <= 0) {
+      console.log(`[worker] User ${userId} has no credits remaining`)
+      return
+    }
   }
 
   // 4. Pick topic (avoid recently used pillars)
@@ -251,24 +253,45 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   }
 
   // 9. Post to LinkedIn (carousel or standard)
-  const useCarousel = prefs?.carouselMode ?? false
+  let useCarousel = prefs?.carouselMode ?? false
   try {
     let carouselCost = 0
     if (useCarousel) {
-      const slides = await generateCarouselSlides({
-        content,
-        topic,
-        niche,
-        displayName: account.displayName ?? user.name ?? 'Professional',
-        plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
-        brandColor: prefs?.brandColor ?? undefined,
+      // Atomically deduct carousel credits BEFORE generation
+      const carouselCreditResult = await prisma.user.updateMany({
+        where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - CAROUSEL_CREDITS } },
+        data: { aiCreditsUsed: { increment: CAROUSEL_CREDITS } },
       })
-      const pdfBuffer = await pngsToPdf(slides)
-      await postCarouselToLinkedIn(account.accessTokenEncrypted, account.sub, content, pdfBuffer)
-      carouselCost = CAROUSEL_CREDITS
-    } else if (imageBuffer) {
+      if (carouselCreditResult.count === 0) {
+        console.warn(`[worker] Insufficient credits for carousel — falling back to standard post`)
+        useCarousel = false
+      } else {
+        carouselCost = CAROUSEL_CREDITS
+        try {
+          const slides = await generateCarouselSlides({
+            content,
+            topic,
+            niche,
+            displayName: account.displayName ?? user.name ?? 'Professional',
+            plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
+            brandColor: prefs?.brandColor ?? undefined,
+          })
+          const pdfBuffer = await pngsToPdf(slides)
+          await postCarouselToLinkedIn(account.accessTokenEncrypted, account.sub, content, pdfBuffer)
+        } catch (carouselErr) {
+          console.warn(`[worker] Carousel generation/upload failed, refunding and falling back:`, carouselErr)
+          await prisma.user.updateMany({
+            where: { id: userId, aiCreditsUsed: { gte: CAROUSEL_CREDITS } },
+            data: { aiCreditsUsed: { decrement: CAROUSEL_CREDITS } },
+          })
+          carouselCost = 0
+          useCarousel = false
+        }
+      }
+    }
+    if (!useCarousel && imageBuffer) {
       await postToLinkedInWithImage(account.accessTokenEncrypted, account.sub, content, imageBuffer)
-    } else {
+    } else if (!useCarousel) {
       await postToLinkedIn(account.accessTokenEncrypted, account.sub, content)
     }
 

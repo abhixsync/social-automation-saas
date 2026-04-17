@@ -1,6 +1,7 @@
 // Edge route for image generation — @vercel/og has built-in fonts in Edge runtime
 // but requires explicit font data in Node.js serverless (which causes "No fonts loaded" errors).
 // The /api/posts/[id]/image route authenticates + fetches DB data, then redirects here.
+// This route verifies a signature to prevent unauthenticated abuse.
 import { generatePostImage, type ImageStyle } from '@/lib/image-gen'
 
 export const runtime = 'edge'
@@ -13,10 +14,24 @@ function decodeBase64url(str: string): string {
   return new TextDecoder().decode(bytes)
 }
 
+async function computeSig(data: string): Promise<string> {
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? ''
+  const msgBuf = new TextEncoder().encode(data + secret)
+  const hashBuf = await crypto.subtle.digest('SHA-256', msgBuf)
+  return Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16)
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const d = searchParams.get('d')
+  const sig = searchParams.get('sig')
   if (!d) return new Response('Missing data', { status: 400 })
+
+  // Verify signature to prevent unauthenticated image generation
+  const expectedSig = await computeSig(d)
+  if (!sig || sig !== expectedSig) {
+    return new Response('Forbidden', { status: 403 })
+  }
 
   try {
     const opts = JSON.parse(decodeBase64url(d)) as {

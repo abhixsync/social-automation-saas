@@ -38,6 +38,7 @@ export async function fetchStockPhoto(
 
     const res = await fetch(url.toString(), {
       headers: { Authorization: apiKey },
+      signal: AbortSignal.timeout(15_000),
     })
 
     if (!res.ok) {
@@ -55,7 +56,7 @@ export async function fetchStockPhoto(
     const pick = data.photos[Math.floor(Math.random() * Math.min(5, data.photos.length))]
     const imageUrl = pick.src.large2x || pick.src.large || pick.src.original
 
-    const imgRes = await fetch(imageUrl)
+    const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(15_000) })
     if (!imgRes.ok) {
       console.warn(`[pexels] Failed to download image: ${imgRes.status}`)
       return null

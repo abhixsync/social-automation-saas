@@ -79,14 +79,17 @@ export async function generatePostImage(opts: {
   const showWatermark = plan === 'free'
   const fontFamily = font ? 'Inter' : 'sans-serif'
 
+  // Validate brandColor — malformed hex crashes darkenHex
+  const validBrandColor = brandColor && /^#[0-9a-fA-F]{6}$/.test(brandColor) ? brandColor : undefined
+
   // Brand color override for gradient-based styles
-  if (brandColor && style !== 'minimal_light' && style !== 'minimal_dark') {
-    from = brandColor
-    to = darkenHex(brandColor, 25)
+  if (validBrandColor && style !== 'minimal_light' && style !== 'minimal_dark') {
+    from = validBrandColor
+    to = darkenHex(validBrandColor, 25)
   }
 
   // Accent color for minimal styles
-  const accentColor = brandColor ?? (style === 'minimal_dark' ? '#818cf8' : '#4f46e5')
+  const accentColor = validBrandColor ?? (style === 'minimal_dark' ? '#818cf8' : '#4f46e5')
 
   // Watermark text color adapts to card background
   const wmColor = style === 'minimal_light' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.3)'

@@ -31,7 +31,7 @@ export async function generateAIImage(
   }
 
   // Download the image (DALL-E URLs expire in ~1 hour)
-  const imgRes = await fetch(imageUrl)
+  const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(30_000) })
   if (!imgRes.ok) {
     throw new Error(`Failed to download DALL-E image: ${imgRes.status}`)
   }

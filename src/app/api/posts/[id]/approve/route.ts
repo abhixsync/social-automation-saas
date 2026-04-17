@@ -38,6 +38,15 @@ export async function POST(
     return NextResponse.json({ error: 'Post must be in pending_approval status to approve' }, { status: 400 })
   }
 
+  // Atomic claim: prevent double-approve race condition (double-click, concurrent requests)
+  const claimed = await prisma.post.updateMany({
+    where: { id, userId, status: 'pending_approval' },
+    data: { status: 'approved' },
+  })
+  if (claimed.count === 0) {
+    return NextResponse.json({ error: 'Post is already being processed' }, { status: 409 })
+  }
+
   const account = await prisma.linkedInAccount.findFirst({
     where: { id: post.linkedInAccountId, userId, isActive: true },
     select: { id: true, sub: true, accessTokenEncrypted: true, expiresAt: true, displayName: true, profilePicture: true },
@@ -55,8 +64,11 @@ export async function POST(
 
   if (shouldPostImage) {
     if (post.customImageUrl) {
-      // User uploaded their own image — fetch it directly
+      // User uploaded their own image — fetch it (validated as Vercel Blob URL)
+      let isSafeUrl = false
+      try { const u = new URL(post.customImageUrl); isSafeUrl = u.protocol === 'https:' && u.hostname.endsWith('.public.blob.vercel-storage.com') } catch { /* invalid */ }
       try {
+        if (!isSafeUrl) throw new Error('Invalid custom image URL')
         const imgRes = await fetch(post.customImageUrl)
         if (imgRes.ok) {
           imageBuffer = Buffer.from(await imgRes.arrayBuffer())

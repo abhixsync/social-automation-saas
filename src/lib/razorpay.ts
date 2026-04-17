@@ -33,22 +33,24 @@ export const RAZORPAY_CURRENCY: Record<Currency, string> = {
   USD: 'USD',
 }
 
-// Verify Razorpay webhook signature
+// Verify Razorpay webhook signature (timing-safe comparison)
 export function verifyWebhookSignature(body: string, signature: string): boolean {
   const crypto = require('crypto') as typeof import('crypto')
   const expected = crypto
     .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
     .update(body)
     .digest('hex')
-  return expected === signature
+  if (expected.length !== signature.length) return false
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))
 }
 
-// Verify payment signature for one-time orders (top-up)
+// Verify payment signature for one-time orders (timing-safe comparison)
 export function verifyOrderPayment(orderId: string, paymentId: string, signature: string): boolean {
   const crypto = require('crypto') as typeof import('crypto')
   const expected = crypto
     .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
     .update(`${orderId}|${paymentId}`)
     .digest('hex')
-  return expected === signature
+  if (expected.length !== signature.length) return false
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createHash } from 'crypto'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { fetchStockPhoto } from '@/lib/pexels'
@@ -40,6 +41,15 @@ export async function GET(
 
   // Serve custom uploaded image directly (skip card generation)
   if (post.customImageUrl) {
+    // Validate URL is from Vercel Blob to prevent open redirect / SSRF
+    try {
+      const parsed = new URL(post.customImageUrl)
+      if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.public.blob.vercel-storage.com')) {
+        return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 })
+      }
+    } catch {
+      return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 })
+    }
     return NextResponse.redirect(post.customImageUrl)
   }
 
@@ -58,7 +68,9 @@ export async function GET(
     const plan = (user?.lifetimeFree ? 'pro' : (user?.plan ?? 'free')) as 'free' | 'pro'
     const brandColor = prefs?.brandColor ?? undefined
     const d = encodeBase64url(JSON.stringify({ style: 'quote_card' as const, content: post.generatedContent, topic: post.topic, niche, displayName, plan, brandColor }))
-    const edgeUrl = new URL(`/api/image-render?d=${d}`, req.url)
+    const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? ''
+    const sig = createHash('sha256').update(d + secret).digest('hex').slice(0, 16)
+    const edgeUrl = new URL(`/api/image-render?d=${d}&sig=${sig}`, req.url)
     return NextResponse.redirect(edgeUrl)
   }
 
@@ -81,6 +93,8 @@ export async function GET(
   const fallbackStyle = style === 'stock_photo' ? 'quote_card' : style
 
   const d = encodeBase64url(JSON.stringify({ style: fallbackStyle, content: post.generatedContent, topic: post.topic, niche, displayName, plan, brandColor, profilePictureUrl, showProfilePic }))
-  const edgeUrl = new URL(`/api/image-render?d=${d}`, req.url)
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? ''
+  const sig = createHash('sha256').update(d + secret).digest('hex').slice(0, 16)
+  const edgeUrl = new URL(`/api/image-render?d=${d}&sig=${sig}`, req.url)
   return NextResponse.redirect(edgeUrl)
 }

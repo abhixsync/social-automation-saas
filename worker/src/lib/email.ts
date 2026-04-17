@@ -62,7 +62,7 @@ export async function sendTokenExpiryWarning(
     return
   }
 
-  const greeting = name ? `Hi ${name}` : 'Hi there'
+  const greeting = name ? `Hi ${escapeHtml(name)}` : 'Hi there'
   const dayWord = daysLeft === 1 ? 'day' : 'days'
 
   await getResend().emails.send({
