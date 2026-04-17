@@ -359,7 +359,7 @@ export default function PostsPage() {
                             </span>
                           </div>
                           <p className="text-sm font-semibold text-gray-900 mb-1">{post.topic}</p>
-                          <p className="text-sm text-gray-600 leading-relaxed">
+                          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
                             {truncate(post.generatedContent)}
                           </p>
                           <div className="flex gap-4 mt-2 text-xs text-gray-400 flex-wrap">
