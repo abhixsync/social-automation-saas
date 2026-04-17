@@ -16,14 +16,24 @@ export default async function DashboardLayout({
     redirect('/auth/login')
   }
 
-  // Always fetch fresh credits from DB — JWT session is stale after worker updates
-  // Wrapped in try/catch: if DB is down, fall back to JWT values rather than crashing the entire layout
+  // Fetch credits + setup status in one round-trip
   let dbUser = null
+  let setupComplete = true
   try {
-    dbUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { aiCreditsUsed: true, aiCreditsTotal: true, plan: true, lifetimeFree: true },
-    })
+    const [user, accountCount, prefs, scheduleCount] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { aiCreditsUsed: true, aiCreditsTotal: true, plan: true, lifetimeFree: true },
+      }),
+      prisma.linkedInAccount.count({ where: { userId: session.user.id, isActive: true } }),
+      prisma.userPreferences.findUnique({
+        where: { userId: session.user.id },
+        select: { contentPillars: true },
+      }),
+      prisma.postSchedule.count({ where: { userId: session.user.id, isActive: true } }),
+    ])
+    dbUser = user
+    setupComplete = accountCount > 0 && (prefs?.contentPillars?.length ?? 0) > 0 && scheduleCount > 0
   } catch {
     // DB error — sidebar will show session credits (stale but usable)
   }
@@ -37,7 +47,7 @@ export default async function DashboardLayout({
     <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* Desktop sidebar */}
       <div className="hidden md:flex md:flex-shrink-0">
-        <Sidebar credits={credits} plan={dbUser?.plan ?? session.user.plan} lifetimeFree={dbUser?.lifetimeFree ?? session.user.lifetimeFree} />
+        <Sidebar credits={credits} plan={dbUser?.plan ?? session.user.plan} lifetimeFree={dbUser?.lifetimeFree ?? session.user.lifetimeFree} setupComplete={setupComplete} />
       </div>
 
       {/* Main content */}

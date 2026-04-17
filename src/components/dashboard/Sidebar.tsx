@@ -11,9 +11,10 @@ interface SidebarProps {
   credits: { used: number; total: number }
   plan?: string
   lifetimeFree?: boolean
+  setupComplete?: boolean
 }
 
-export default function Sidebar({ credits, plan, lifetimeFree }: SidebarProps) {
+export default function Sidebar({ credits, plan, lifetimeFree, setupComplete }: SidebarProps) {
   const pathname = usePathname()
   const remaining = credits.total - credits.used
   const pct = lifetimeFree ? 0 : (credits.total > 0 ? Math.min(100, (credits.used / credits.total) * 100) : 0)
@@ -52,6 +53,9 @@ export default function Sidebar({ credits, plan, lifetimeFree }: SidebarProps) {
               )}
             />
             {label}
+            {href === '/dashboard' && setupComplete === false && (
+              <span className="ml-auto w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Setup incomplete" />
+            )}
           </Link>
         ))}
       </nav>

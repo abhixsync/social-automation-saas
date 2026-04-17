@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -44,9 +45,11 @@ interface AccountScheduleState {
   isActive: boolean
   saving: boolean
   dirty: boolean
+  isNew: boolean
 }
 
 export default function SchedulePage() {
+  const router = useRouter()
   const [accounts, setAccounts] = useState<LinkedInAccount[]>([])
   const [schedules, setSchedules] = useState<Record<string, AccountScheduleState>>({})
   const [loading, setLoading] = useState(true)
@@ -82,6 +85,7 @@ export default function SchedulePage() {
             isActive: existing?.isActive ?? true,
             saving: false,
             dirty: false,
+            isNew: !existing,
           }
         }
         setSchedules(stateMap)
@@ -151,8 +155,17 @@ export default function SchedulePage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed to save schedule')
-      toast.success('Schedule saved')
-      setSchedules((prev) => ({ ...prev, [accountId]: { ...prev[accountId], dirty: false } }))
+      const wasNew = schedules[accountId]?.isNew ?? false
+      setSchedules((prev) => ({ ...prev, [accountId]: { ...prev[accountId], dirty: false, isNew: false } }))
+      if (wasNew) {
+        toast.success('Schedule saved!', {
+          description: 'Continue your setup from the dashboard.',
+          action: { label: 'Dashboard →', onClick: () => router.push('/dashboard') },
+          duration: 7000,
+        })
+      } else {
+        toast.success('Schedule saved')
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save schedule')
     } finally {

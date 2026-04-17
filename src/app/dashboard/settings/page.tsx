@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -80,6 +81,17 @@ interface Preferences {
   autoImage: boolean
 }
 
+const DEFAULT_PREFS: Preferences = {
+  niche: '',
+  tone: 'professional',
+  contentPillars: [],
+  customPromptSuffix: '',
+  approvalMode: false,
+  timezone: 'Asia/Kolkata',
+  imageStyle: 'quote_card',
+  autoImage: true,
+}
+
 function serializeState(p: Preferences, pillars: string) {
   return JSON.stringify({
     niche: p.niche,
@@ -94,20 +106,13 @@ function serializeState(p: Preferences, pillars: string) {
 }
 
 export default function SettingsPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [prefs, setPrefs] = useState<Preferences>({
-    niche: '',
-    tone: 'professional',
-    contentPillars: [],
-    customPromptSuffix: '',
-    approvalMode: false,
-    timezone: 'Asia/Kolkata',
-    imageStyle: 'quote_card',
-    autoImage: true,
-  })
+  const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS)
   const [pillarsInput, setPillarsInput] = useState('')
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null)
+  const [isFirstSetup, setIsFirstSetup] = useState(false)
 
   const isDirty = savedSnapshot !== null && serializeState(prefs, pillarsInput) !== savedSnapshot
 
@@ -122,9 +127,17 @@ export default function SettingsPage() {
           setPrefs(p)
           setPillarsInput(pi)
           setSavedSnapshot(serializeState(p, pi))
+          // Treat as first-time setup if niche hasn't been filled in yet
+          setIsFirstSetup(!p.niche)
+        } else {
+          // No preferences yet — snapshot defaults so any change enables Save
+          setSavedSnapshot(serializeState(DEFAULT_PREFS, ''))
+          setIsFirstSetup(true)
         }
       } catch {
         // preferences may not exist yet — use defaults
+        setSavedSnapshot(serializeState(DEFAULT_PREFS, ''))
+        setIsFirstSetup(true)
       } finally {
         setLoading(false)
       }
@@ -149,7 +162,16 @@ export default function SettingsPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed to save')
       setSavedSnapshot(serializeState(prefs, pillarsInput))
-      toast.success('Settings saved')
+      if (isFirstSetup) {
+        setIsFirstSetup(false)
+        toast.success('Preferences saved!', {
+          description: 'Continue your setup from the dashboard.',
+          action: { label: 'Dashboard →', onClick: () => router.push('/dashboard') },
+          duration: 7000,
+        })
+      } else {
+        toast.success('Settings saved')
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save settings')
     } finally {
