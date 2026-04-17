@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { generatePostImage, type ImageStyle } from '@/lib/image-gen'
+import type { ImageStyle } from '@/lib/image-gen'
+
+function encodeBase64url(str: string): string {
+  const bytes = new TextEncoder().encode(str)
+  let binary = ''
+  for (const b of bytes) binary += String.fromCharCode(b)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth()
@@ -40,23 +47,7 @@ export async function GET(
   const displayName = account?.displayName ?? user?.name ?? 'Professional'
   const plan = (user?.lifetimeFree ? 'pro' : (user?.plan ?? 'free')) as 'free' | 'pro'
 
-  try {
-    const buffer = await generatePostImage({
-      style,
-      content: post.generatedContent,
-      topic: post.topic,
-      niche,
-      displayName,
-      plan,
-    })
-    return new Response(new Uint8Array(buffer), {
-      headers: {
-        'Content-Type': 'image/png',
-        'Cache-Control': 'private, max-age=3600',
-      },
-    })
-  } catch (err) {
-    console.error('[posts/image] Generation failed:', err)
-    return NextResponse.json({ error: 'Image generation failed' }, { status: 500 })
-  }
+  const d = encodeBase64url(JSON.stringify({ style, content: post.generatedContent, topic: post.topic, niche, displayName, plan }))
+  const edgeUrl = new URL(`/api/image-render?d=${d}`, req.url)
+  return NextResponse.redirect(edgeUrl)
 }
