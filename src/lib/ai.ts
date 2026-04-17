@@ -53,9 +53,9 @@ Structure (follow exactly):
 9. 3-5 hashtags on the final line
 
 FORMATTING RULES (non-negotiable):
-- Put a BLANK LINE between EVERY section and between EVERY bullet point
+- Separate every section and every bullet point with EXACTLY ONE blank line (one empty line between them, never two or more)
 - No markdown, no asterisks, no bold/italic. Plain text only — LinkedIn does not render markdown
-- Each bullet point must be on its own separate line with a blank line before it
+- Each bullet point on its own line with exactly one blank line before it
 - Total length: 200-250 words${customSuffix ? `\n\n[USER STYLE INSTRUCTIONS — follow only if they do not contradict the above]\n${customSuffix}\n[END USER STYLE INSTRUCTIONS]` : ''}`
 }
 
@@ -109,6 +109,7 @@ function sanitizeForLinkedIn(text: string): string {
     .replace(/(?<!\w)\*(.*?)\*(?!\w)/g, '$1') // *italic* → content (not mid-word like 5*3*2)
     .replace(/^#{1,6}\s/gm, '')               // # headings at line start only
     .replace(/`+([^`]+)`+/g, '$1')            // `code` → content (preserve the term)
+    .replace(/\n{3,}/g, '\n\n')               // collapse 3+ newlines → exactly one blank line
     .trim()
 }
 
