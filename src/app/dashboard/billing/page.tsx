@@ -156,90 +156,109 @@ export default async function BillingPage({
         <h3 className="text-base font-semibold text-gray-900 mb-4">
           {lifetimeFree ? 'Your Plan' : 'All Plans'}
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {lifetimeFree && (
-            <Card className="border-2 border-indigo-500 bg-gradient-to-b from-indigo-50/60 to-purple-50/40">
-              <CardHeader className="pb-3">
+            <Card className="border-2 border-indigo-500 bg-gradient-to-b from-indigo-50/60 to-purple-50/40 sm:col-span-2">
+              <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold">Lifetime Free</CardTitle>
-                  <Badge className="bg-indigo-100 text-indigo-700 border-0 text-xs hover:bg-indigo-100">
-                    Current
-                  </Badge>
+                  <CardTitle className="text-xl font-bold">Lifetime Free</CardTitle>
+                  <Badge className="bg-indigo-100 text-indigo-700 border-0 hover:bg-indigo-100">Current Plan</Badge>
                 </div>
-                <p className="text-2xl font-bold text-gray-900 mt-1">∞</p>
+                <p className="text-5xl font-bold text-gray-900 mt-2">∞</p>
+                <p className="text-sm text-gray-500 mt-1">Unlimited everything, forever</p>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-1.5">
-                  {[
-                    'Unlimited credits',
-                    'All LinkedIn accounts',
-                    'Best AI model',
-                  ].map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
-                      <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+              <CardContent className="space-y-4">
+                <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {['Unlimited credits', 'All LinkedIn accounts', 'Claude Sonnet AI model', 'Auto-scheduling', 'Image generation', 'Priority support'].map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
                       {f}
                     </li>
                   ))}
                 </ul>
-                <p className="text-xs text-indigo-600 font-medium text-center py-1">
-                  Your current plan
-                </p>
               </CardContent>
             </Card>
           )}
 
           {!lifetimeFree && PLAN_ORDER.map((planKey) => {
             const config = PLAN_CONFIG[planKey]
-            const isCurrent = !lifetimeFree && planKey === currentPlan
-            const priceINR = config.priceINR
-            const priceUSD = config.priceUSD
+            const isCurrent = planKey === currentPlan
+            const isPro = planKey === 'pro'
             const price = currency === 'INR'
-              ? (priceINR === 0 ? 'Free' : `₹${priceINR}/mo`)
-              : (priceUSD === 0 ? 'Free' : `$${priceUSD}/mo`)
+              ? (config.priceINR === 0 ? 'Free' : `₹${config.priceINR}/mo`)
+              : (config.priceUSD === 0 ? 'Free' : `$${config.priceUSD}/mo`)
 
-            const features = [
-              `${config.creditsPerMonth} credits/mo`,
-              `${config.maxAccounts} LinkedIn account${config.maxAccounts > 1 ? 's' : ''}`,
-              modelLabel(config.model),
-            ]
+            const features = planKey === 'free'
+              ? [
+                  `${config.creditsPerMonth.toLocaleString()} credits/month`,
+                  `≈ ${(config.creditsPerMonth * 50).toLocaleString()} words generated`,
+                  `${config.maxAccounts} LinkedIn account`,
+                  `${modelLabel(config.model)} AI model`,
+                  'Auto-scheduling',
+                  'Image generation (5 credits)',
+                ]
+              : [
+                  `${config.creditsPerMonth.toLocaleString()} credits/month`,
+                  `≈ ${(config.creditsPerMonth * 50).toLocaleString()} words generated`,
+                  `Up to ${config.maxAccounts} LinkedIn accounts`,
+                  `${modelLabel(config.model)} AI model`,
+                  'Auto-scheduling',
+                  'Image generation (5 credits)',
+                  'Stock photo integration',
+                  'Carousel posts',
+                  'Priority support',
+                ]
 
             return (
               <Card
                 key={planKey}
-                className={`border-2 transition-colors ${
+                className={`border-2 transition-colors relative ${
                   isCurrent
-                    ? 'border-indigo-500 bg-indigo-50/30'
+                    ? 'border-indigo-500 bg-indigo-50/20'
+                    : isPro
+                    ? 'border-indigo-300 hover:border-indigo-400'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <CardHeader className="pb-3">
+                {isPro && !isCurrent && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-indigo-600 text-white border-0 hover:bg-indigo-600 px-3">Recommended</Badge>
+                  </div>
+                )}
+                <CardHeader className="pb-4 pt-6">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-semibold">{config.name}</CardTitle>
+                    <CardTitle className="text-xl font-bold">{config.name}</CardTitle>
                     {isCurrent && (
-                      <Badge className="bg-indigo-100 text-indigo-700 border-0 text-xs hover:bg-indigo-100">
-                        Current
-                      </Badge>
+                      <Badge className="bg-indigo-100 text-indigo-700 border-0 hover:bg-indigo-100">Current Plan</Badge>
                     )}
                   </div>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{price}</p>
+                  <p className={`text-4xl font-bold mt-3 ${isPro ? 'text-indigo-700' : 'text-gray-900'}`}>{price}</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {planKey === 'free' ? 'No credit card required' : 'Billed monthly · cancel anytime'}
+                  </p>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <ul className="space-y-1.5">
+                <CardContent className="space-y-5">
+                  <ul className="space-y-3">
                     {features.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
-                        <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                      <li key={f} className="flex items-center gap-2.5 text-sm text-gray-700">
+                        <CheckCircle className={`w-4 h-4 flex-shrink-0 ${isPro ? 'text-indigo-500' : 'text-green-500'}`} />
                         {f}
                       </li>
                     ))}
                   </ul>
 
-                  {!lifetimeFree && !isCurrent && planKey !== 'free' && (
-                    <BillingActions currentPlan={currentPlan} mode="upgrade" targetPlan={planKey} userName={userName} userEmail={userEmail} />
+                  {!isCurrent && planKey !== 'free' && (
+                    <div className="pt-2">
+                      <BillingActions currentPlan={currentPlan} mode="upgrade" targetPlan={planKey} userName={userName} userEmail={userEmail} />
+                    </div>
                   )}
                   {isCurrent && (
-                    <p className="text-xs text-indigo-600 font-medium text-center py-1">
+                    <p className="text-sm text-indigo-600 font-medium text-center py-2 bg-indigo-50 rounded-lg">
                       Your current plan
                     </p>
+                  )}
+                  {!isCurrent && planKey === 'free' && currentPlan !== 'free' && (
+                    <p className="text-xs text-gray-400 text-center py-2">Downgrade by cancelling your subscription</p>
                   )}
                 </CardContent>
               </Card>
