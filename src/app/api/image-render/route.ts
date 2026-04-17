@@ -7,7 +7,7 @@ export const runtime = 'edge'
 
 function decodeBase64url(str: string): string {
   const b64 = str.replace(/-/g, '+').replace(/_/g, '/')
-  const padded = b64 + '=='.slice((4 - b64.length % 4) % 4)
+  const padded = b64 + '=='.slice(0, (4 - b64.length % 4) % 4)
   const binary = atob(padded)
   const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0))
   return new TextDecoder().decode(bytes)
