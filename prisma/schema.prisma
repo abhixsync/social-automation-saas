@@ -222,6 +222,7 @@ model Post {
   errorMessage      String?    @db.Text
   includeImage      Boolean    @default(true)
   imageStyle        ImageStyle?
+  customImageUrl    String?    // Vercel Blob URL for user-uploaded image
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 

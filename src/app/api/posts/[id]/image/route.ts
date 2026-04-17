@@ -23,7 +23,7 @@ export async function GET(
   const [post, user, prefs] = await Promise.all([
     prisma.post.findFirst({
       where: { id, userId, status: 'pending_approval' },
-      select: { generatedContent: true, topic: true, imageStyle: true, linkedInAccountId: true },
+      select: { generatedContent: true, topic: true, imageStyle: true, linkedInAccountId: true, customImageUrl: true },
     }),
     prisma.user.findUnique({
       where: { id: userId },
@@ -36,6 +36,11 @@ export async function GET(
   ])
 
   if (!post) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Serve custom uploaded image directly (skip card generation)
+  if (post.customImageUrl) {
+    return NextResponse.redirect(post.customImageUrl)
+  }
 
   const account = await prisma.linkedInAccount.findUnique({
     where: { id: post.linkedInAccountId },

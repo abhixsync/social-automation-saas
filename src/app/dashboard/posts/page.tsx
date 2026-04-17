@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { RefreshCw, Trash2, CheckCircle, ChevronLeft, ChevronRight, Loader2, Eye, Pencil, Zap, ImageIcon } from 'lucide-react'
+import { RefreshCw, Trash2, CheckCircle, ChevronLeft, ChevronRight, Loader2, Eye, Pencil, Zap, ImageIcon, Upload, X } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 
 interface Post {
@@ -34,6 +34,7 @@ interface Post {
   status: string
   aiModel: string
   includeImage: boolean
+  customImageUrl: string | null
   createdAt: string
   publishedAt: string | null
   linkedInAccount: { displayName: string | null; profilePicture: string | null }
@@ -94,6 +95,11 @@ export default function PostsPage() {
   // Per-post includeImage optimistic state: postId -> boolean
   const [imageOverrides, setImageOverrides] = useState<Record<string, boolean>>({})
   const [imageToggleLoading, setImageToggleLoading] = useState<Record<string, boolean>>({})
+
+  // Custom image upload state: postId -> uploading
+  const [uploadLoading, setUploadLoading] = useState<Record<string, boolean>>({})
+  // Track custom image URLs locally for optimistic UI (postId -> url | null)
+  const [customImageUrls, setCustomImageUrls] = useState<Record<string, string | null>>({})
 
   // Generate Now state
   const [showGenerateDialog, setShowGenerateDialog] = useState(false)
@@ -219,6 +225,45 @@ export default function PostsPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to update image setting')
     } finally {
       setImageToggleLoading((l) => { const n = { ...l }; delete n[post.id]; return n })
+    }
+  }
+
+  async function handleUploadImage(post: Post, file: File) {
+    setUploadLoading((l) => ({ ...l, [post.id]: true }))
+    try {
+      const form = new FormData()
+      form.append('image', file)
+      const res = await fetch(`/api/posts/${post.id}/upload-image`, {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Upload failed')
+      setCustomImageUrls((u) => ({ ...u, [post.id]: json.url }))
+      toast.success('Image uploaded')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upload image')
+    } finally {
+      setUploadLoading((l) => { const n = { ...l }; delete n[post.id]; return n })
+    }
+  }
+
+  async function handleRemoveCustomImage(post: Post) {
+    setUploadLoading((l) => ({ ...l, [post.id]: true }))
+    try {
+      const res = await fetch(`/api/posts/${post.id}/upload-image`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to remove')
+      setCustomImageUrls((u) => ({ ...u, [post.id]: null }))
+      toast.success('Custom image removed')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove image')
+    } finally {
+      setUploadLoading((l) => { const n = { ...l }; delete n[post.id]; return n })
     }
   }
 
@@ -399,20 +444,58 @@ export default function PostsPage() {
                                   <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
                                 )}
                               </div>
-                              {(imageOverrides[post.id] ?? post.includeImage) && (
-                                <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                                  <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
-                                    <ImageIcon className="w-7 h-7 text-white/60" />
+                              {(imageOverrides[post.id] ?? post.includeImage) && (() => {
+                                const customUrl = customImageUrls[post.id] ?? post.customImageUrl
+                                return (
+                                  <div className="flex items-end gap-3">
+                                    <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                                      <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
+                                        <ImageIcon className="w-7 h-7 text-white/60" />
+                                      </div>
+                                      <img
+                                        src={customUrl ?? `/api/posts/${post.id}/image`}
+                                        alt="Post image preview"
+                                        loading="lazy"
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                      />
+                                      {customUrl && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveCustomImage(post)}
+                                          disabled={uploadLoading[post.id]}
+                                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70"
+                                          title="Remove custom image"
+                                        >
+                                          <X className="w-3 h-3 text-white" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <label className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer">
+                                      {uploadLoading[post.id] ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      ) : (
+                                        <Upload className="w-3.5 h-3.5" />
+                                      )}
+                                      {customUrl ? 'Replace' : 'Upload'}
+                                      <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        className="hidden"
+                                        disabled={uploadLoading[post.id]}
+                                        onChange={(e) => {
+                                          const f = e.target.files?.[0]
+                                          if (f) handleUploadImage(post, f)
+                                          e.target.value = ''
+                                        }}
+                                      />
+                                    </label>
+                                    {customUrl && (
+                                      <span className="text-xs text-green-600 font-medium">Custom</span>
+                                    )}
                                   </div>
-                                  <img
-                                    src={`/api/posts/${post.id}/image`}
-                                    alt="Post image preview"
-                                    loading="lazy"
-                                    className="absolute inset-0 w-full h-full object-cover"
-                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                                  />
-                                </div>
-                              )}
+                                )
+                              })()}
                             </div>
                           )}
                         </div>

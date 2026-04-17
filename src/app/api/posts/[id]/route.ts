@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { del } from '@vercel/blob'
 import { z } from 'zod'
 import { wordsToCredits } from '@/types'
 
@@ -42,13 +43,18 @@ export async function DELETE(
   try {
     const post = await prisma.post.findFirst({
       where: { id, userId: session.user.id },
-      select: { id: true, status: true },
+      select: { id: true, status: true, customImageUrl: true },
     })
 
     if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
     if (post.status === 'published') {
       return NextResponse.json({ error: 'Cannot delete a published post' }, { status: 400 })
+    }
+
+    // Clean up custom image blob if one was uploaded
+    if (post.customImageUrl) {
+      try { await del(post.customImageUrl) } catch { /* blob may already be gone */ }
     }
 
     // Credits are non-refundable on delete — AI generation already ran and consumed compute.

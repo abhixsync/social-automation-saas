@@ -42,49 +42,69 @@ export async function POST(
   if (!account) return NextResponse.json({ error: 'LinkedIn account not found or inactive' }, { status: 404 })
   if (account.expiresAt < new Date()) return NextResponse.json({ error: 'LinkedIn token has expired. Please reconnect.' }, { status: 400 })
 
-  // Generate image if user wants it:
-  // 1. Deduct image credits atomically FIRST (before generation)
-  // 2. Generate image — if it fails, refund credits and fall back to text-only
-  // This ensures credits are never charged for an image that was never generated.
+  // Generate or fetch image if user wants it:
+  // Custom upload: fetch from Vercel Blob (no generation needed)
+  // Generated card: deduct credits → generate → refund on failure
   const shouldPostImage = post.includeImage
   let imageBuffer: Buffer | null = null
   let imageCreditsCost = 0
 
   if (shouldPostImage) {
-    const remaining = user.aiCreditsTotal - user.aiCreditsUsed
-    if (remaining >= IMAGE_CREDITS) {
-      // Atomically reserve image credits before doing any work
-      const creditResult = await prisma.user.updateMany({
-        where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - IMAGE_CREDITS } },
-        data: { aiCreditsUsed: { increment: IMAGE_CREDITS } },
-      })
+    if (post.customImageUrl) {
+      // User uploaded their own image — fetch it directly
+      try {
+        const imgRes = await fetch(post.customImageUrl)
+        if (imgRes.ok) {
+          imageBuffer = Buffer.from(await imgRes.arrayBuffer())
+          imageCreditsCost = IMAGE_CREDITS
+          // Deduct credits for the LinkedIn upload
+          const creditResult = await prisma.user.updateMany({
+            where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - IMAGE_CREDITS } },
+            data: { aiCreditsUsed: { increment: IMAGE_CREDITS } },
+          })
+          if (creditResult.count === 0) {
+            imageBuffer = null
+            imageCreditsCost = 0
+          }
+        }
+      } catch (err) {
+        console.warn('[posts/approve] Custom image fetch failed, posting text-only:', err)
+        imageBuffer = null
+      }
+    } else {
+      // Generate card image
+      const remaining = user.aiCreditsTotal - user.aiCreditsUsed
+      if (remaining >= IMAGE_CREDITS) {
+        const creditResult = await prisma.user.updateMany({
+          where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - IMAGE_CREDITS } },
+          data: { aiCreditsUsed: { increment: IMAGE_CREDITS } },
+        })
 
-      if (creditResult.count > 0) {
-        imageCreditsCost = IMAGE_CREDITS
-        try {
-          imageBuffer = await generatePostImage({
-            style: (prefs?.imageStyle ?? 'quote_card') as ImageStyle,
-            content: post.generatedContent,
-            topic: post.topic,
-            niche: prefs?.niche ?? 'tech professional',
-            displayName: account.displayName ?? user.name ?? 'Professional',
-            plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
-            brandColor: prefs?.brandColor ?? undefined,
-            profilePictureUrl: account.profilePicture ?? undefined,
-            showProfilePic: prefs?.showProfilePicOnCard ?? false,
-          })
-        } catch (imgErr) {
-          // Generation failed after credit deduction — refund and fall back to text-only
-          console.warn('[posts/approve] Image generation failed, refunding credits and posting text-only:', imgErr)
-          await prisma.user.updateMany({
-            where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
-            data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
-          })
-          imageCreditsCost = 0
-          imageBuffer = null
+        if (creditResult.count > 0) {
+          imageCreditsCost = IMAGE_CREDITS
+          try {
+            imageBuffer = await generatePostImage({
+              style: (prefs?.imageStyle ?? 'quote_card') as ImageStyle,
+              content: post.generatedContent,
+              topic: post.topic,
+              niche: prefs?.niche ?? 'tech professional',
+              displayName: account.displayName ?? user.name ?? 'Professional',
+              plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
+              brandColor: prefs?.brandColor ?? undefined,
+              profilePictureUrl: account.profilePicture ?? undefined,
+              showProfilePic: prefs?.showProfilePicOnCard ?? false,
+            })
+          } catch (imgErr) {
+            console.warn('[posts/approve] Image generation failed, refunding credits and posting text-only:', imgErr)
+            await prisma.user.updateMany({
+              where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
+              data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
+            })
+            imageCreditsCost = 0
+            imageBuffer = null
+          }
         }
       }
-      // else: credit race (concurrent request used credits) — fall back to text-only silently
     }
   }
 
