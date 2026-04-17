@@ -50,6 +50,7 @@ enum ImageStyle {
   minimal_light
   minimal_dark
   list_card
+  stock_photo
 }
 
 // ─────────────────────────────────────────────

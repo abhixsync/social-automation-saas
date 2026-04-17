@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { postToLinkedIn, postToLinkedInWithImage } from '@/lib/linkedin'
 import { generatePostImage, type ImageStyle } from '@/lib/image-gen'
+import { fetchStockPhoto } from '@/lib/pexels'
 import { IMAGE_CREDITS } from '@/lib/credits'
 
 export async function POST(
@@ -70,6 +71,29 @@ export async function POST(
       } catch (err) {
         console.warn('[posts/approve] Custom image fetch failed, posting text-only:', err)
         imageBuffer = null
+      }
+    } else if ((prefs?.imageStyle ?? 'quote_card') === 'stock_photo') {
+      // Stock photo from Pexels
+      const remaining = user.aiCreditsTotal - user.aiCreditsUsed
+      if (remaining >= IMAGE_CREDITS) {
+        const creditResult = await prisma.user.updateMany({
+          where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - IMAGE_CREDITS } },
+          data: { aiCreditsUsed: { increment: IMAGE_CREDITS } },
+        })
+        if (creditResult.count > 0) {
+          imageCreditsCost = IMAGE_CREDITS
+          const stockBuffer = await fetchStockPhoto(post.topic, prefs?.niche ?? 'tech professional')
+          if (stockBuffer) {
+            imageBuffer = stockBuffer
+          } else {
+            // Pexels failed — refund and fall back to text-only
+            await prisma.user.updateMany({
+              where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
+              data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
+            })
+            imageCreditsCost = 0
+          }
+        }
       }
     } else {
       // Generate card image

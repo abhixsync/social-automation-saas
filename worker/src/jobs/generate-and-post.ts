@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js'
 import { generatePost, pickTopic, countWords } from '../lib/ai.js'
 import { postToLinkedIn, postToLinkedInWithImage } from '../lib/linkedin.js'
 import { generatePostImage } from '../lib/image-gen.js'
+import { fetchStockPhoto } from '../lib/pexels.js'
 import { wordsToCredits } from '../lib/credits.js'
 import { sendPostReadyEmail } from '../lib/email.js'
 
@@ -180,22 +181,29 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   let imageBuffer: Buffer | null = null
 
   if (shouldPostImage) {
-    try {
-      imageBuffer = await generatePostImage({
-        style: (prefs?.imageStyle ?? 'quote_card') as 'quote_card' | 'stats_card' | 'topic_card' | 'minimal_light' | 'minimal_dark' | 'list_card',
-        content,
-        topic,
-        niche,
-        displayName: account.displayName ?? user.name ?? 'Professional',
-        plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
-        brandColor: prefs?.brandColor ?? undefined,
-        profilePictureUrl: account.profilePicture ?? undefined,
-        showProfilePic: prefs?.showProfilePicOnCard ?? false,
-      })
-    } catch (imgErr) {
-      // Image generation failure is non-fatal — fall back to text-only
-      console.warn(`[worker] Image generation failed, falling back to text-only:`, imgErr)
-      imageBuffer = null
+    const imgStyle = prefs?.imageStyle ?? 'quote_card'
+    if (imgStyle === 'stock_photo') {
+      // Fetch stock photo from Pexels
+      imageBuffer = await fetchStockPhoto(topic, niche)
+      if (!imageBuffer) console.warn(`[worker] Pexels returned no photo, falling back to text-only`)
+    } else {
+      try {
+        imageBuffer = await generatePostImage({
+          style: imgStyle as 'quote_card' | 'stats_card' | 'topic_card' | 'minimal_light' | 'minimal_dark' | 'list_card',
+          content,
+          topic,
+          niche,
+          displayName: account.displayName ?? user.name ?? 'Professional',
+          plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
+          brandColor: prefs?.brandColor ?? undefined,
+          profilePictureUrl: account.profilePicture ?? undefined,
+          showProfilePic: prefs?.showProfilePicOnCard ?? false,
+        })
+      } catch (imgErr) {
+        // Image generation failure is non-fatal — fall back to text-only
+        console.warn(`[worker] Image generation failed, falling back to text-only:`, imgErr)
+        imageBuffer = null
+      }
     }
   }
 
