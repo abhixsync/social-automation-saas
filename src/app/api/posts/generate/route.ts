@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // 5 manual triggers per hour per user
-  const { allowed } = await checkRateLimit(`manual-generate:${session.user.id}`, 5, 3600)
+  const { allowed } = await checkRateLimit(`manual-generate:${session.user.id}`, 5, 3600, { failOpen: true })
   if (!allowed) {
     return NextResponse.json(
       { error: 'Too many generation requests. Please wait before trying again.' },

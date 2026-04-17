@@ -2,12 +2,17 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getRazorpay } from '@/lib/razorpay'
-import { PLAN_CONFIG } from '@/types'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 export async function POST() {
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { allowed } = await checkRateLimit(`billing-cancel:${session.user.id}`, 3, 60)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
   try {
@@ -21,17 +26,9 @@ export async function POST() {
       return NextResponse.json({ error: 'No active subscription' }, { status: 400 })
     }
 
+    // Cancel at period end — Razorpay fires subscription.cancelled webhook
+    // when the billing period expires, which handles the actual downgrade.
     await getRazorpay().subscriptions.cancel(user.razorpaySubscriptionId, false)
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        plan: 'free',
-        razorpaySubscriptionId: null,
-        aiCreditsTotal: PLAN_CONFIG.free.creditsPerMonth,
-        aiCreditsUsed: 0,
-      },
-    })
 
     return NextResponse.json({ ok: true })
   } catch (err) {

@@ -4,11 +4,17 @@ import { prisma } from '@/lib/prisma'
 import { getRazorpay, verifyOrderPayment, TOPUP_AMOUNT } from '@/lib/razorpay'
 import { TOPUP_CREDITS } from '@/types'
 import type { Currency } from '@/generated/prisma/enums'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { allowed } = await checkRateLimit(`billing-verify:${session.user.id}`, 10, 60)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
   try {

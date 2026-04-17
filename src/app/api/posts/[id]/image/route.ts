@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { fetchStockPhoto } from '@/lib/pexels'
 import type { ImageStyle } from '@/lib/image-gen'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 function encodeBase64url(str: string): string {
   const bytes = new TextEncoder().encode(str)
@@ -21,6 +22,11 @@ export async function GET(
 
   const { id } = await params
   const userId = session.user.id
+
+  const { allowed } = await checkRateLimit(`image-preview:${userId}`, 30, 60)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
 
   const [post, user, prefs] = await Promise.all([
     prisma.post.findFirst({

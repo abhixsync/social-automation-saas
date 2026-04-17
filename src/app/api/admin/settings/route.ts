@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 const ALLOWED_KEYS = ['free_credits_per_month', 'pro_credits_per_month', 'app_mode']
 
@@ -17,6 +18,11 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!isAdmin(session?.user?.email)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { allowed } = await checkRateLimit(`admin-settings:${session?.user?.id}`, 10, 60)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
   const body = await req.json()

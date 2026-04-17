@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { getRazorpay, getPlanId } from '@/lib/razorpay'
 import { z } from 'zod'
 import type { Currency } from '@/generated/prisma/enums'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 const schema = z.object({
   plan: z.enum(['pro']),
@@ -13,6 +14,11 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { allowed } = await checkRateLimit(`billing-checkout:${session.user.id}`, 5, 60)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
   try {

@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { removeUserSchedule } from '@/lib/scheduler'
 import { z } from 'zod'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 const schema = z.object({ accountId: z.string() })
 
@@ -10,6 +11,11 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { allowed } = await checkRateLimit(`linkedin-disconnect:${session.user.id}`, 5, 60)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
   try {

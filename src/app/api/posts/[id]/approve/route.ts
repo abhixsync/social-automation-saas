@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkRateLimit } from '@/lib/ratelimit'
 import { postToLinkedIn, postToLinkedInWithImage, postCarouselToLinkedIn } from '@/lib/linkedin'
 import { generatePostImage, type ImageStyle } from '@/lib/image-gen'
 import { generateCarouselSlides } from '@/lib/carousel-gen'
@@ -17,6 +18,11 @@ export async function POST(
 
   const { id } = await params
   const userId = session.user.id
+
+  const { allowed } = await checkRateLimit(`approve:${userId}`, 10, 60)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
 
   // Load post + user + prefs + account in parallel
   const [post, user, prefs] = await Promise.all([

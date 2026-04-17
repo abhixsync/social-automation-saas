@@ -268,6 +268,16 @@ model SiteSetting {
 }
 
 // ─────────────────────────────────────────────
+// Webhook idempotency
+// ─────────────────────────────────────────────
+
+model WebhookEvent {
+  id        String   @id @default(cuid())
+  eventId   String   @unique
+  createdAt DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
 // In-app notifications
 // ─────────────────────────────────────────────
 

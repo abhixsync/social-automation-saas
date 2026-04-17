@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 const updateSchema = z.object({
   niche: z.string().min(1).max(100).optional(),
@@ -40,6 +41,11 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { allowed } = await checkRateLimit(`preferences:${session.user.id}`, 10, 60)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
 
   try {
     const body = await req.json()

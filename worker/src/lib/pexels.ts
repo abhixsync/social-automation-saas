@@ -11,11 +11,22 @@ interface PexelsResponse {
   total_results: number
 }
 
+function sanitizeUserInput(input: string): string {
+  return input
+    .replace(/\[END\s+USER\s+STYLE\s+INSTRUCTIONS?\]/gi, '')
+    .replace(/ignore\s+(all\s+)?(above|previous|prior|preceding)/gi, '')
+    .replace(/\bsystem\s*:/gi, '')
+    .slice(0, 500)
+    .trim()
+}
+
 /**
  * Use Claude Haiku to generate a concrete, visual Pexels search query
  * from the post topic and niche. Falls back to a simple heuristic.
  */
 async function buildImageQuery(topic: string, niche: string): Promise<string> {
+  topic = sanitizeUserInput(topic)
+  niche = sanitizeUserInput(niche)
   try {
     const groqKey = process.env.GROQ_API_KEY
     if (!groqKey) throw new Error('no key')
@@ -90,7 +101,19 @@ export async function fetchStockPhoto(
       return null
     }
 
-    return Buffer.from(await imgRes.arrayBuffer())
+    const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB
+    const contentLength = parseInt(imgRes.headers.get('content-length') ?? '0', 10)
+    if (contentLength > MAX_IMAGE_BYTES) {
+      console.warn(`[pexels] Image too large (${contentLength} bytes), skipping`)
+      return null
+    }
+    const arrayBuffer = await imgRes.arrayBuffer()
+    if (arrayBuffer.byteLength > MAX_IMAGE_BYTES) {
+      console.warn(`[pexels] Downloaded image exceeds 10MB, skipping`)
+      return null
+    }
+
+    return Buffer.from(arrayBuffer)
   } catch (err) {
     console.error('[pexels] Error fetching stock photo:', err)
     return null

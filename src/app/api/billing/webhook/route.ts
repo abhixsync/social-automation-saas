@@ -33,6 +33,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
+  // Idempotency: skip duplicate webhook deliveries (Razorpay retries on failure)
+  const eventId =
+    (event.payload?.subscription?.entity?.id ??
+      event.payload?.payment?.entity?.id ??
+      'unknown') +
+    ':' +
+    event.event
+  const existing = await prisma.webhookEvent.findUnique({ where: { eventId } })
+  if (existing) {
+    return NextResponse.json({ received: true })
+  }
+
   try {
     switch (event.event) {
       case 'subscription.activated': {
@@ -108,6 +120,9 @@ export async function POST(req: NextRequest) {
     console.error(`[webhook] Error handling ${event?.event}:`, err)
     // Return 200 anyway — Razorpay retries on non-200
   }
+
+  // Record event as processed (catch to not fail on race condition)
+  await prisma.webhookEvent.create({ data: { eventId } }).catch(() => {})
 
   return NextResponse.json({ received: true })
 }
