@@ -55,11 +55,14 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const controller = new AbortController()
+    const signal = controller.signal
+
     async function load() {
       try {
         const [accsRes, schRes] = await Promise.all([
-          fetch('/api/linkedin/accounts', { credentials: 'include' }),
-          fetch('/api/schedule', { credentials: 'include' }),
+          fetch('/api/linkedin/accounts', { credentials: 'include', signal }),
+          fetch('/api/schedule', { credentials: 'include', signal }),
         ])
 
         let accs: LinkedInAccount[] = []
@@ -89,13 +92,15 @@ export default function SchedulePage() {
           }
         }
         setSchedules(stateMap)
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
         toast.error('Failed to load schedule data')
       } finally {
         setLoading(false)
       }
     }
     load()
+    return () => controller.abort()
   }, [])
 
   function update(accountId: string, patch: Partial<AccountScheduleState>) {
@@ -249,6 +254,7 @@ export default function SchedulePage() {
                             key={day.value}
                             type="button"
                             onClick={() => toggleDay(account.id, day.value)}
+                            aria-pressed={active}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                               active
                                 ? 'bg-indigo-600 text-white border-indigo-600'

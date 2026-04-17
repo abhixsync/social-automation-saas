@@ -3,12 +3,14 @@ import { getRedis } from '@/lib/scheduler'
 /**
  * Atomic fixed-window rate limiter backed by Redis.
  * INCR + EXPIRE run in a single pipeline to prevent key leaking on process crash.
- * Falls open (allows) if Redis is unavailable.
+ * By default fails open (allows) if Redis is unavailable; pass { failOpen: false }
+ * for security-critical paths to fail closed instead.
  */
 export async function checkRateLimit(
   key: string,
   limit: number,
   windowSecs: number,
+  options?: { failOpen?: boolean },
 ): Promise<{ allowed: boolean }> {
   try {
     const redis = getRedis()
@@ -20,7 +22,7 @@ export async function checkRateLimit(
 
     return { allowed: count <= limit }
   } catch {
-    return { allowed: true } // fail open if Redis unavailable
+    return { allowed: options?.failOpen ?? true } // fail open or closed based on caller preference
   }
 }
 

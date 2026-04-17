@@ -184,9 +184,12 @@ export default function SettingsPage() {
   const isDirty = savedSnapshot !== null && serializeState(prefs, pillarsInput) !== savedSnapshot
 
   useEffect(() => {
+    const controller = new AbortController()
+    const signal = controller.signal
+
     async function load() {
       try {
-        const res = await fetch('/api/preferences', { credentials: 'include' })
+        const res = await fetch('/api/preferences', { credentials: 'include', signal })
         if (res.ok) {
           const json = await res.json()
           const p: Preferences = json.preferences ?? json
@@ -201,7 +204,8 @@ export default function SettingsPage() {
           setSavedSnapshot(serializeState(DEFAULT_PREFS, ''))
           setIsFirstSetup(true)
         }
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
         // preferences may not exist yet — use defaults
         setSavedSnapshot(serializeState(DEFAULT_PREFS, ''))
         setIsFirstSetup(true)
@@ -210,6 +214,7 @@ export default function SettingsPage() {
       }
     }
     load()
+    return () => controller.abort()
   }, [])
 
   async function handleSave() {
@@ -385,13 +390,15 @@ export default function SettingsPage() {
           <CardContent className="space-y-5">
             <div className="space-y-2">
               <Label>Image Style</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div role="radiogroup" className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {IMAGE_STYLES.map((style) => {
                   const selected = prefs.imageStyle === style.value
                   return (
                     <button
                       key={style.value}
                       type="button"
+                      role="radio"
+                      aria-checked={selected}
                       onClick={() =>
                         setPrefs((p) => ({
                           ...p,

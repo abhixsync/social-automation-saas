@@ -107,16 +107,17 @@ export default function PostsPage() {
   const [selectedAccountId, setSelectedAccountId] = useState('')
   const [generateLoading, setGenerateLoading] = useState(false)
 
-  const fetchPosts = useCallback(async (status: string, p: number) => {
+  const fetchPosts = useCallback(async (status: string, p: number, signal?: AbortSignal) => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ page: String(p), limit: '20' })
       if (status !== 'all') params.set('status', status)
-      const res = await fetch(`/api/posts?${params}`, { credentials: 'include' })
+      const res = await fetch(`/api/posts?${params}`, { credentials: 'include', signal })
       if (!res.ok) throw new Error('Failed to fetch posts')
       const json = await res.json()
       setData(json)
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       toast.error('Failed to load posts')
     } finally {
       setLoading(false)
@@ -126,7 +127,9 @@ export default function PostsPage() {
   // Single effect: fires when page or tab changes. Tab change resets page (below),
   // which triggers this effect — avoids the double-fetch race condition.
   useEffect(() => {
-    fetchPosts(activeTab, page)
+    const controller = new AbortController()
+    fetchPosts(activeTab, page, controller.signal)
+    return () => controller.abort()
   }, [page, activeTab, fetchPosts])
 
   function changeTab(tab: string) {
@@ -466,6 +469,7 @@ export default function PostsPage() {
                                           disabled={uploadLoading[post.id]}
                                           className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70"
                                           title="Remove custom image"
+                                          aria-label="Remove custom image"
                                         >
                                           <X className="w-3 h-3 text-white" />
                                         </button>
@@ -511,6 +515,7 @@ export default function PostsPage() {
                             onClick={() => openViewPost(post)}
                             className="px-2 text-gray-400 hover:text-indigo-600"
                             title="View full post"
+                            aria-label="View post"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -552,6 +557,7 @@ export default function PostsPage() {
                               onClick={() => setDeleteTarget(post)}
                               disabled={!!busy}
                               className="text-gray-400 hover:text-red-500 hover:bg-red-50 px-2"
+                              aria-label="Delete post"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>

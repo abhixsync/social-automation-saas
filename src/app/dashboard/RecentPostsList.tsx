@@ -93,7 +93,7 @@ export default function RecentPostsList({ posts }: { posts: RecentPost[] }) {
                 {statusLabel(post.status)}
               </span>
               <Button size="sm" variant="ghost" className="px-2 h-7 text-gray-400 hover:text-indigo-600"
-                onClick={() => setViewPost(post)}>
+                onClick={() => setViewPost(post)} aria-label="View post">
                 <Eye className="w-3.5 h-3.5" />
               </Button>
               {post.status === 'pending_approval' && (

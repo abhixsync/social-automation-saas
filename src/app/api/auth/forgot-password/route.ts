@@ -11,7 +11,7 @@ const RESPONSE = { message: 'If an account exists, a reset email has been sent.'
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req)
-  const { allowed } = await checkRateLimit(`forgot-password:${ip}`, 5, 60)
+  const { allowed } = await checkRateLimit(`forgot-password:${ip}`, 5, 60, { failOpen: false })
   if (!allowed) {
     // Return same response to avoid leaking rate-limit timing info
     return NextResponse.json(RESPONSE)
