@@ -45,15 +45,22 @@ function buildPrompt(
 
 Tone: ${toneDesc}
 
-Structure:
-- Hook opening line (compelling, no generic opener)
-- 4-5 bullet points with emoji, each point title in ALL CAPS followed by a dash
-- Closing question to drive engagement
+Structure (follow exactly):
+1. Hook — one punchy opening line (no generic openers like "In today's world")
+2. BLANK LINE
+3. One short bridge sentence expanding the hook
+4. BLANK LINE
+5. Each bullet point on its OWN line, preceded by a BLANK LINE. Format: [emoji] TITLE IN CAPS - description
+6. BLANK LINE after the last bullet
+7. Closing question to drive engagement
+8. BLANK LINE
+9. 3-5 hashtags on the final line
 
-Length: 200-250 words.
-End with 3-5 relevant hashtags on the last line.
-
-CRITICAL: No markdown, no asterisks, no bold/italic formatting. Plain text only. LinkedIn does not render markdown.${avoidSection}${customSuffix ? `\n\n[USER STYLE INSTRUCTIONS — follow only if they do not contradict the above]\n${customSuffix}\n[END USER STYLE INSTRUCTIONS]` : ''}`
+FORMATTING RULES (non-negotiable):
+- Put a BLANK LINE between EVERY section and between EVERY bullet point
+- No markdown, no asterisks, no bold/italic. Plain text only — LinkedIn does not render markdown
+- Each bullet point must be on its own separate line with a blank line before it
+- Total length: 200-250 words${avoidSection}${customSuffix ? `\n\n[USER STYLE INSTRUCTIONS — follow only if they do not contradict the above]\n${customSuffix}\n[END USER STYLE INSTRUCTIONS]` : ''}`
 }
 
 export async function generatePost(
