@@ -1,11 +1,13 @@
 import type { Job } from 'bullmq'
 import { prisma } from '../lib/prisma.js'
 import { generatePost, pickTopic, countWords } from '../lib/ai.js'
-import { postToLinkedIn, postToLinkedInWithImage } from '../lib/linkedin.js'
+import { postToLinkedIn, postToLinkedInWithImage, postCarouselToLinkedIn } from '../lib/linkedin.js'
 import { generatePostImage } from '../lib/image-gen.js'
+import { generateCarouselSlides } from '../lib/carousel-gen.js'
+import { pngsToPdf } from '../lib/pdf.js'
 import { fetchStockPhoto } from '../lib/pexels.js'
 import { generateAIImage } from '../lib/ai-image.js'
-import { wordsToCredits, IMAGE_CREDITS, AI_IMAGE_CREDITS } from '../lib/credits.js'
+import { wordsToCredits, IMAGE_CREDITS, AI_IMAGE_CREDITS, CAROUSEL_CREDITS } from '../lib/credits.js'
 import { sendPostReadyEmail } from '../lib/email.js'
 
 interface JobData {
@@ -46,6 +48,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         autoImage: true,
         brandColor: true,
         showProfilePicOnCard: true,
+        carouselMode: true,
       },
     }),
     // Recent posts for topic uniqueness — fetched with a placeholder take;
@@ -159,6 +162,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
           status: 'pending_approval',
           aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
           includeImage: prefs?.autoImage ?? true,
+          isCarousel: prefs?.carouselMode ?? false,
           scheduledFor: new Date(),
         },
       })
@@ -246,9 +250,23 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
     return
   }
 
-  // 9. Post to LinkedIn
+  // 9. Post to LinkedIn (carousel or standard)
+  const useCarousel = prefs?.carouselMode ?? false
   try {
-    if (imageBuffer) {
+    let carouselCost = 0
+    if (useCarousel) {
+      const slides = await generateCarouselSlides({
+        content,
+        topic,
+        niche,
+        displayName: account.displayName ?? user.name ?? 'Professional',
+        plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
+        brandColor: prefs?.brandColor ?? undefined,
+      })
+      const pdfBuffer = await pngsToPdf(slides)
+      await postCarouselToLinkedIn(account.accessTokenEncrypted, account.sub, content, pdfBuffer)
+      carouselCost = CAROUSEL_CREDITS
+    } else if (imageBuffer) {
       await postToLinkedInWithImage(account.accessTokenEncrypted, account.sub, content, imageBuffer)
     } else {
       await postToLinkedIn(account.accessTokenEncrypted, account.sub, content)
@@ -261,16 +279,17 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         topic,
         generatedContent: content,
         wordCount,
-        creditsUsed: totalCredits,
+        creditsUsed: totalCredits + carouselCost,
         status: 'published',
         aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
         includeImage: imageBuffer !== null,
+        isCarousel: useCarousel,
         imageStyle: imageBuffer ? ((prefs?.imageStyle ?? 'quote_card') as Parameters<typeof prisma.post.create>[0]['data']['imageStyle']) : null,
         publishedAt: new Date(),
       },
     })
 
-    console.log(`[worker] ✅ Published post for user ${userId}${imageBuffer ? ' (with image)' : ''}`)
+    console.log(`[worker] ✅ Published post for user ${userId}${useCarousel ? ' (carousel)' : imageBuffer ? ' (with image)' : ''}`)
   } catch (err) {
     console.error(`[worker] LinkedIn post failed:`, err)
     // Refund credits (best effort — failure here means user loses credits for a post that didn't go live)

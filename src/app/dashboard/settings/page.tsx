@@ -139,6 +139,7 @@ interface Preferences {
   autoImage: boolean
   brandColor: string | null
   showProfilePicOnCard: boolean
+  carouselMode: boolean
 }
 
 const DEFAULT_PREFS: Preferences = {
@@ -152,6 +153,7 @@ const DEFAULT_PREFS: Preferences = {
   autoImage: true,
   brandColor: null,
   showProfilePicOnCard: false,
+  carouselMode: false,
 }
 
 function serializeState(p: Preferences, pillars: string) {
@@ -165,6 +167,7 @@ function serializeState(p: Preferences, pillars: string) {
     autoImage: p.autoImage,
     brandColor: p.brandColor ?? '',
     showProfilePicOnCard: p.showProfilePicOnCard,
+    carouselMode: p.carouselMode,
     pillars: pillars.split(',').map((s) => s.trim()).filter(Boolean).join('|'),
   })
 }
@@ -475,6 +478,22 @@ export default function SettingsPage() {
               <Switch
                 checked={prefs.autoImage}
                 onCheckedChange={(v) => setPrefs((p) => ({ ...p, autoImage: v }))}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Carousel format</Label>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Generate multi-slide carousel posts (PDF) instead of single images
+                </p>
+                <p className="text-xs text-gray-400">
+                  Carousel posts get 3-5x higher engagement on LinkedIn. Costs 25 credits.
+                </p>
+              </div>
+              <Switch
+                checked={prefs.carouselMode}
+                onCheckedChange={(v) => setPrefs((p) => ({ ...p, carouselMode: v }))}
               />
             </div>
           </CardContent>

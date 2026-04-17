@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { postToLinkedIn, postToLinkedInWithImage } from '@/lib/linkedin'
+import { postToLinkedIn, postToLinkedInWithImage, postCarouselToLinkedIn } from '@/lib/linkedin'
 import { generatePostImage, type ImageStyle } from '@/lib/image-gen'
+import { generateCarouselSlides } from '@/lib/carousel-gen'
+import { pngsToPdf } from '@/lib/pdf'
 import { fetchStockPhoto } from '@/lib/pexels'
 import { generateAIImage } from '@/lib/ai-image'
-import { IMAGE_CREDITS, AI_IMAGE_CREDITS } from '@/lib/credits'
+import { IMAGE_CREDITS, AI_IMAGE_CREDITS, CAROUSEL_CREDITS } from '@/lib/credits'
 
 export async function POST(
   _req: NextRequest,
@@ -26,7 +28,7 @@ export async function POST(
     }),
     prisma.userPreferences.findUnique({
       where: { userId },
-      select: { imageStyle: true, niche: true, brandColor: true, showProfilePicOnCard: true },
+      select: { imageStyle: true, niche: true, brandColor: true, showProfilePicOnCard: true, carouselMode: true },
     }),
   ])
 
@@ -157,6 +159,56 @@ export async function POST(
   }
 
   try {
+    // Carousel path: generate slides → PDF → LinkedIn document post
+    if (post.isCarousel) {
+      const remaining = user.aiCreditsTotal - user.aiCreditsUsed
+      let carouselCost = 0
+      if (remaining >= CAROUSEL_CREDITS) {
+        const creditResult = await prisma.user.updateMany({
+          where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - CAROUSEL_CREDITS } },
+          data: { aiCreditsUsed: { increment: CAROUSEL_CREDITS } },
+        })
+        if (creditResult.count > 0) {
+          carouselCost = CAROUSEL_CREDITS
+          try {
+            const slides = await generateCarouselSlides({
+              content: post.generatedContent,
+              topic: post.topic,
+              niche: prefs?.niche ?? 'tech professional',
+              displayName: account.displayName ?? user.name ?? 'Professional',
+              plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
+              brandColor: prefs?.brandColor ?? undefined,
+            })
+            const pdfBuffer = await pngsToPdf(slides)
+            await postCarouselToLinkedIn(account.accessTokenEncrypted, account.sub, post.generatedContent, pdfBuffer)
+          } catch (carouselErr) {
+            console.warn('[posts/approve] Carousel generation/upload failed, refunding:', carouselErr)
+            await prisma.user.updateMany({
+              where: { id: userId, aiCreditsUsed: { gte: CAROUSEL_CREDITS } },
+              data: { aiCreditsUsed: { decrement: CAROUSEL_CREDITS } },
+            })
+            carouselCost = 0
+            // Fall back to regular image or text-only post
+            if (imageBuffer) {
+              await postToLinkedInWithImage(account.accessTokenEncrypted, account.sub, post.generatedContent, imageBuffer)
+            } else {
+              await postToLinkedIn(account.accessTokenEncrypted, account.sub, post.generatedContent)
+            }
+          }
+        }
+      }
+      const updated = await prisma.post.update({
+        where: { id },
+        data: {
+          status: 'published',
+          publishedAt: new Date(),
+          creditsUsed: post.creditsUsed + imageCreditsCost + carouselCost,
+        },
+      })
+      return NextResponse.json({ post: updated })
+    }
+
+    // Standard path: single image or text-only
     if (imageBuffer) {
       await postToLinkedInWithImage(account.accessTokenEncrypted, account.sub, post.generatedContent, imageBuffer)
     } else {

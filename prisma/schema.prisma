@@ -178,6 +178,7 @@ model UserPreferences {
   timezone              String   @default("Asia/Kolkata")
   brandColor            String?  // hex e.g. #4f46e5 — overrides gradient on cards
   showProfilePicOnCard  Boolean  @default(false)
+  carouselMode          Boolean  @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -225,6 +226,7 @@ model Post {
   includeImage      Boolean    @default(true)
   imageStyle        ImageStyle?
   customImageUrl    String?    // Vercel Blob URL for user-uploaded image
+  isCarousel        Boolean    @default(false)
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
