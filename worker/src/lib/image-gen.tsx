@@ -160,7 +160,7 @@ export async function generatePostImage(opts: {
   const response = new ImageResponse(jsx, {
     width: 1080,
     height: 1080,
-    fonts: font ? [{ name: 'Inter', data: font, weight: 400 }] : [],
+    ...(font ? { fonts: [{ name: 'Inter', data: font, weight: 400 }] } : {}),
   })
 
   const arrayBuffer = await response.arrayBuffer()
