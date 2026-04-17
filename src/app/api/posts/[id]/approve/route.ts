@@ -24,7 +24,7 @@ export async function POST(
     }),
     prisma.userPreferences.findUnique({
       where: { userId },
-      select: { imageStyle: true, niche: true },
+      select: { imageStyle: true, niche: true, brandColor: true, showProfilePicOnCard: true },
     }),
   ])
 
@@ -36,7 +36,7 @@ export async function POST(
 
   const account = await prisma.linkedInAccount.findFirst({
     where: { id: post.linkedInAccountId, userId, isActive: true },
-    select: { id: true, sub: true, accessTokenEncrypted: true, expiresAt: true, displayName: true },
+    select: { id: true, sub: true, accessTokenEncrypted: true, expiresAt: true, displayName: true, profilePicture: true },
   })
 
   if (!account) return NextResponse.json({ error: 'LinkedIn account not found or inactive' }, { status: 404 })
@@ -69,6 +69,9 @@ export async function POST(
             niche: prefs?.niche ?? 'tech professional',
             displayName: account.displayName ?? user.name ?? 'Professional',
             plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
+            brandColor: prefs?.brandColor ?? undefined,
+            profilePictureUrl: account.profilePicture ?? undefined,
+            showProfilePic: prefs?.showProfilePicOnCard ?? false,
           })
         } catch (imgErr) {
           // Generation failed after credit deduction — refund and fall back to text-only

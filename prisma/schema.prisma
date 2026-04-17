@@ -47,6 +47,9 @@ enum ImageStyle {
   quote_card
   stats_card
   topic_card
+  minimal_light
+  minimal_dark
+  list_card
 }
 
 // ─────────────────────────────────────────────
@@ -168,9 +171,11 @@ model UserPreferences {
   contentPillars     String[]
   customPromptSuffix String?  @db.Text
   approvalMode       Boolean  @default(false)
-  imageStyle         ImageStyle @default(quote_card)
-  autoImage          Boolean  @default(true)
-  timezone           String   @default("Asia/Kolkata")
+  imageStyle            ImageStyle @default(quote_card)
+  autoImage             Boolean  @default(true)
+  timezone              String   @default("Asia/Kolkata")
+  brandColor            String?  // hex e.g. #4f46e5 — overrides gradient on cards
+  showProfilePicOnCard  Boolean  @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

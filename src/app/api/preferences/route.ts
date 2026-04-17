@@ -10,8 +10,10 @@ const updateSchema = z.object({
   customPromptSuffix: z.string().max(500).nullable().optional(),
   approvalMode: z.boolean().optional(),
   timezone: z.string().min(1).max(100).optional(),
-  imageStyle: z.enum(['quote_card', 'stats_card', 'topic_card']).optional(),
+  imageStyle: z.enum(['quote_card', 'stats_card', 'topic_card', 'minimal_light', 'minimal_dark', 'list_card']).optional(),
   autoImage: z.boolean().optional(),
+  brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a hex color like #4f46e5').nullable().optional(),
+  showProfilePicOnCard: z.boolean().optional(),
 })
 
 export async function GET() {
@@ -55,6 +57,8 @@ export async function PUT(req: NextRequest) {
         timezone: data.timezone ?? 'Asia/Kolkata',
         imageStyle: data.imageStyle ?? 'quote_card',
         autoImage: data.autoImage ?? true,
+        brandColor: data.brandColor ?? null,
+        showProfilePicOnCard: data.showProfilePicOnCard ?? false,
       },
     })
 

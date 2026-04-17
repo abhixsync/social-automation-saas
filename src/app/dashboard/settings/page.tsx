@@ -22,7 +22,7 @@ const IMAGE_STYLES = [
   {
     value: 'quote_card',
     label: 'Quote Card',
-    description: 'Hook text displayed large on a gradient purple background',
+    description: 'Hook text on a gradient purple background',
     preview: (
       <div className="w-full h-20 rounded-md bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center p-3">
         <p className="text-white text-xs font-semibold text-center leading-tight line-clamp-3">
@@ -34,7 +34,7 @@ const IMAGE_STYLES = [
   {
     value: 'stats_card',
     label: 'Stats Card',
-    description: 'Big number or metric on a gradient pink/red background',
+    description: 'Big number or metric on a pink/red gradient',
     preview: (
       <div className="w-full h-20 rounded-md bg-gradient-to-br from-pink-500 to-red-500 flex flex-col items-center justify-center p-3">
         <p className="text-white text-2xl font-bold">10x</p>
@@ -45,10 +45,46 @@ const IMAGE_STYLES = [
   {
     value: 'topic_card',
     label: 'Topic Card',
-    description: 'Topic title displayed prominently on a gradient blue background',
+    description: 'Topic title on a gradient blue background',
     preview: (
       <div className="w-full h-20 rounded-md bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center p-3">
         <p className="text-white text-sm font-bold text-center">System Design Patterns</p>
+      </div>
+    ),
+  },
+  {
+    value: 'minimal_light',
+    label: 'Minimal Light',
+    description: 'Clean white card with dark text',
+    preview: (
+      <div className="w-full h-20 rounded-md bg-white border border-gray-200 flex items-center justify-center p-3">
+        <p className="text-gray-800 text-xs font-semibold text-center leading-tight">
+          Clean, professional typography on white
+        </p>
+      </div>
+    ),
+  },
+  {
+    value: 'minimal_dark',
+    label: 'Minimal Dark',
+    description: 'Sleek dark card with white text',
+    preview: (
+      <div className="w-full h-20 rounded-md bg-gradient-to-br from-gray-900 to-slate-800 flex items-center justify-center p-3">
+        <p className="text-white text-xs font-semibold text-center leading-tight">
+          Modern dark mode aesthetic
+        </p>
+      </div>
+    ),
+  },
+  {
+    value: 'list_card',
+    label: 'List Card',
+    description: 'Numbered bullet points on an indigo gradient',
+    preview: (
+      <div className="w-full h-20 rounded-md bg-gradient-to-br from-indigo-500 to-violet-600 flex flex-col justify-center p-3 gap-0.5">
+        <p className="text-white text-xs font-medium">1. First key point</p>
+        <p className="text-white text-xs font-medium">2. Second key point</p>
+        <p className="text-white text-xs font-medium">3. Third key point</p>
       </div>
     ),
   },
@@ -77,8 +113,10 @@ interface Preferences {
   customPromptSuffix: string | null
   approvalMode: boolean
   timezone: string
-  imageStyle: 'quote_card' | 'stats_card' | 'topic_card'
+  imageStyle: 'quote_card' | 'stats_card' | 'topic_card' | 'minimal_light' | 'minimal_dark' | 'list_card'
   autoImage: boolean
+  brandColor: string | null
+  showProfilePicOnCard: boolean
 }
 
 const DEFAULT_PREFS: Preferences = {
@@ -90,6 +128,8 @@ const DEFAULT_PREFS: Preferences = {
   timezone: 'Asia/Kolkata',
   imageStyle: 'quote_card',
   autoImage: true,
+  brandColor: null,
+  showProfilePicOnCard: false,
 }
 
 function serializeState(p: Preferences, pillars: string) {
@@ -101,6 +141,8 @@ function serializeState(p: Preferences, pillars: string) {
     timezone: p.timezone,
     imageStyle: p.imageStyle,
     autoImage: p.autoImage,
+    brandColor: p.brandColor ?? '',
+    showProfilePicOnCard: p.showProfilePicOnCard,
     pillars: pillars.split(',').map((s) => s.trim()).filter(Boolean).join('|'),
   })
 }
@@ -318,7 +360,7 @@ export default function SettingsPage() {
           <CardContent className="space-y-5">
             <div className="space-y-2">
               <Label>Image Style</Label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {IMAGE_STYLES.map((style) => {
                   const selected = prefs.imageStyle === style.value
                   return (
@@ -346,6 +388,56 @@ export default function SettingsPage() {
                   )
                 })}
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="brandColor">Brand Color</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  id="brandColor"
+                  value={prefs.brandColor ?? '#667eea'}
+                  onChange={(e) => setPrefs((p) => ({ ...p, brandColor: e.target.value }))}
+                  className="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5"
+                />
+                <Input
+                  value={prefs.brandColor ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v === '' || /^#[0-9a-fA-F]{0,6}$/.test(v)) {
+                      setPrefs((p) => ({ ...p, brandColor: v || null }))
+                    }
+                  }}
+                  placeholder="#667eea"
+                  className="w-32 font-mono text-sm"
+                  maxLength={7}
+                />
+                {prefs.brandColor && (
+                  <button
+                    type="button"
+                    onClick={() => setPrefs((p) => ({ ...p, brandColor: null }))}
+                    className="text-xs text-gray-400 hover:text-gray-600"
+                  >
+                    Reset to default
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-400">
+                Overrides the default gradient on image cards with your brand color
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Show profile picture</Label>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Display your LinkedIn profile picture in the corner of image cards
+                </p>
+              </div>
+              <Switch
+                checked={prefs.showProfilePicOnCard}
+                onCheckedChange={(v) => setPrefs((p) => ({ ...p, showProfilePicOnCard: v }))}
+              />
             </div>
 
             <div className="flex items-center justify-between">

@@ -30,7 +30,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
     }),
     prisma.linkedInAccount.findUnique({
       where: { id: accountId },
-      select: { id: true, sub: true, accessTokenEncrypted: true, expiresAt: true, isActive: true, displayName: true },
+      select: { id: true, sub: true, accessTokenEncrypted: true, expiresAt: true, isActive: true, displayName: true, profilePicture: true },
     }),
     prisma.userPreferences.findUnique({
       where: { userId },
@@ -42,6 +42,8 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         approvalMode: true,
         imageStyle: true,
         autoImage: true,
+        brandColor: true,
+        showProfilePicOnCard: true,
       },
     }),
     // Recent posts for topic uniqueness — fetched with a placeholder take;
@@ -180,12 +182,15 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   if (shouldPostImage) {
     try {
       imageBuffer = await generatePostImage({
-        style: (prefs?.imageStyle ?? 'quote_card') as 'quote_card' | 'stats_card' | 'topic_card',
+        style: (prefs?.imageStyle ?? 'quote_card') as 'quote_card' | 'stats_card' | 'topic_card' | 'minimal_light' | 'minimal_dark' | 'list_card',
         content,
         topic,
         niche,
         displayName: account.displayName ?? user.name ?? 'Professional',
         plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
+        brandColor: prefs?.brandColor ?? undefined,
+        profilePictureUrl: account.profilePicture ?? undefined,
+        showProfilePic: prefs?.showProfilePicOnCard ?? false,
       })
     } catch (imgErr) {
       // Image generation failure is non-fatal — fall back to text-only

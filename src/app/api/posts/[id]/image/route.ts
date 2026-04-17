@@ -31,7 +31,7 @@ export async function GET(
     }),
     prisma.userPreferences.findUnique({
       where: { userId },
-      select: { niche: true, imageStyle: true },
+      select: { niche: true, imageStyle: true, brandColor: true, showProfilePicOnCard: true },
     }),
   ])
 
@@ -39,15 +39,18 @@ export async function GET(
 
   const account = await prisma.linkedInAccount.findUnique({
     where: { id: post.linkedInAccountId },
-    select: { displayName: true },
+    select: { displayName: true, profilePicture: true },
   })
 
   const style = (post.imageStyle ?? prefs?.imageStyle ?? 'quote_card') as ImageStyle
   const niche = prefs?.niche ?? 'tech professional'
   const displayName = account?.displayName ?? user?.name ?? 'Professional'
   const plan = (user?.lifetimeFree ? 'pro' : (user?.plan ?? 'free')) as 'free' | 'pro'
+  const brandColor = prefs?.brandColor ?? undefined
+  const profilePictureUrl = account?.profilePicture ?? undefined
+  const showProfilePic = prefs?.showProfilePicOnCard ?? false
 
-  const d = encodeBase64url(JSON.stringify({ style, content: post.generatedContent, topic: post.topic, niche, displayName, plan }))
+  const d = encodeBase64url(JSON.stringify({ style, content: post.generatedContent, topic: post.topic, niche, displayName, plan, brandColor, profilePictureUrl, showProfilePic }))
   const edgeUrl = new URL(`/api/image-render?d=${d}`, req.url)
   return NextResponse.redirect(edgeUrl)
 }

@@ -26,6 +26,9 @@ export async function GET(req: Request) {
       niche: string
       displayName: string
       plan: 'free' | 'pro'
+      brandColor?: string
+      profilePictureUrl?: string
+      showProfilePic?: boolean
     }
 
     const buffer = await generatePostImage(opts)
