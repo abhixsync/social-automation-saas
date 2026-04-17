@@ -49,3 +49,7 @@ next-env.d.ts
 .claude/
 .omc/
 worker/.omc/
+
+# Font files (avoid git CRLF corruption of binaries)
+public/fonts/
+worker/fonts/

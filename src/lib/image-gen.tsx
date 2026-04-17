@@ -1,22 +1,11 @@
 import { ImageResponse } from '@vercel/og'
-import fs from 'fs'
-import path from 'path'
 
 export type ImageStyle = 'quote_card' | 'stats_card' | 'topic_card'
 
-// Load Inter TTF from public/fonts/ (bundled locally — avoids WOFF2 CDN which Satori rejects).
-// Cached after first load for the process lifetime.
-let _font: ArrayBuffer | null | undefined = undefined
+// Use Satori's built-in fonts — avoids WOFF2/variable-font/binary-corruption issues.
+// Custom TTF can be added later once a proper static font + .gitattributes setup is in place.
 function getFont(): ArrayBuffer | null {
-  if (_font !== undefined) return _font
-  try {
-    const buf = fs.readFileSync(path.join(process.cwd(), 'public', 'fonts', 'Inter-Regular.ttf'))
-    _font = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
-  } catch (err) {
-    console.warn('[image-gen] Font load failed, using built-in font:', err)
-    _font = null
-  }
-  return _font
+  return null
 }
 
 // Extract the hook line (first sentence) from a LinkedIn post
