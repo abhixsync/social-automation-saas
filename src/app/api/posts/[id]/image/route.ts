@@ -80,7 +80,11 @@ export async function GET(
   const fallbackStyle = style === 'stock_photo' ? 'quote_card' : style
 
   const d = encodeBase64url(JSON.stringify({ style: fallbackStyle, content: post.generatedContent, topic: post.topic, niche, displayName, plan, brandColor, profilePictureUrl, showProfilePic }))
-  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? ''
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET
+  if (!secret) {
+    console.error('[image] AUTH_SECRET is not configured')
+    return new Response('Server configuration error', { status: 500 })
+  }
   const sig = createHash('sha256').update(d + secret).digest('hex').slice(0, 16)
   const edgeUrl = new URL(`/api/image-render?d=${d}&sig=${sig}`, req.url)
   return NextResponse.redirect(edgeUrl)

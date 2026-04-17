@@ -73,11 +73,12 @@ export async function POST(
           imageBuffer = Buffer.from(await imgRes.arrayBuffer())
           imageCreditsCost = IMAGE_CREDITS
           // Deduct credits for the LinkedIn upload
-          const creditResult = await prisma.user.updateMany({
-            where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - IMAGE_CREDITS } },
-            data: { aiCreditsUsed: { increment: IMAGE_CREDITS } },
-          })
-          if (creditResult.count === 0) {
+          // Atomic: check current DB credits (not stale JS snapshot) to prevent double-spend
+          const creditResult: number = await prisma.$executeRaw`
+            UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${IMAGE_CREDITS}
+            WHERE id = ${userId} AND "aiCreditsUsed" + ${IMAGE_CREDITS} <= "aiCreditsTotal"
+          `
+          if (creditResult === 0) {
             imageBuffer = null
             imageCreditsCost = 0
           }
@@ -90,11 +91,11 @@ export async function POST(
       // Stock photo from Pexels
       const remaining = user.aiCreditsTotal - user.aiCreditsUsed
       if (remaining >= IMAGE_CREDITS) {
-        const creditResult = await prisma.user.updateMany({
-          where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - IMAGE_CREDITS } },
-          data: { aiCreditsUsed: { increment: IMAGE_CREDITS } },
-        })
-        if (creditResult.count > 0) {
+        const creditResult: number = await prisma.$executeRaw`
+          UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${IMAGE_CREDITS}
+          WHERE id = ${userId} AND "aiCreditsUsed" + ${IMAGE_CREDITS} <= "aiCreditsTotal"
+        `
+        if (creditResult > 0) {
           imageCreditsCost = IMAGE_CREDITS
           const stockBuffer = await fetchStockPhoto(post.topic, prefs?.niche ?? 'tech professional')
           if (stockBuffer) {
@@ -113,12 +114,12 @@ export async function POST(
       // Generate card image
       const remaining = user.aiCreditsTotal - user.aiCreditsUsed
       if (remaining >= IMAGE_CREDITS) {
-        const creditResult = await prisma.user.updateMany({
-          where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - IMAGE_CREDITS } },
-          data: { aiCreditsUsed: { increment: IMAGE_CREDITS } },
-        })
+        const creditResult: number = await prisma.$executeRaw`
+          UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${IMAGE_CREDITS}
+          WHERE id = ${userId} AND "aiCreditsUsed" + ${IMAGE_CREDITS} <= "aiCreditsTotal"
+        `
 
-        if (creditResult.count > 0) {
+        if (creditResult > 0) {
           imageCreditsCost = IMAGE_CREDITS
           try {
             imageBuffer = await generatePostImage({
@@ -152,11 +153,11 @@ export async function POST(
       const remaining = user.aiCreditsTotal - user.aiCreditsUsed
       let carouselCost = 0
       if (remaining >= CAROUSEL_CREDITS) {
-        const creditResult = await prisma.user.updateMany({
-          where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - CAROUSEL_CREDITS } },
-          data: { aiCreditsUsed: { increment: CAROUSEL_CREDITS } },
-        })
-        if (creditResult.count > 0) {
+        const creditResult: number = await prisma.$executeRaw`
+          UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${CAROUSEL_CREDITS}
+          WHERE id = ${userId} AND "aiCreditsUsed" + ${CAROUSEL_CREDITS} <= "aiCreditsTotal"
+        `
+        if (creditResult > 0) {
           carouselCost = CAROUSEL_CREDITS
           try {
             const slides = await generateCarouselSlides({

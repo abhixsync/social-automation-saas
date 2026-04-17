@@ -14,8 +14,9 @@ function decodeBase64url(str: string): string {
   return new TextDecoder().decode(bytes)
 }
 
-async function computeSig(data: string): Promise<string> {
-  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? ''
+async function computeSig(data: string): Promise<string | null> {
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET
+  if (!secret) return null
   const msgBuf = new TextEncoder().encode(data + secret)
   const hashBuf = await crypto.subtle.digest('SHA-256', msgBuf)
   return Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16)
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
 
   // Verify signature to prevent unauthenticated image generation
   const expectedSig = await computeSig(d)
-  if (!sig || sig !== expectedSig) {
+  if (!expectedSig || !sig || sig !== expectedSig) {
     return new Response('Forbidden', { status: 403 })
   }
 

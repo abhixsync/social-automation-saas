@@ -146,11 +146,12 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   if (prefs?.approvalMode) {
     let creditsDeducted = false
     await prisma.$transaction(async (tx) => {
-      const result = await tx.user.updateMany({
-        where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - creditsUsed } },
-        data: { aiCreditsUsed: { increment: creditsUsed } },
-      })
-      if (result.count === 0) return // credits exhausted by a concurrent job
+      // Atomic: check current DB credits (not stale JS snapshot) to prevent double-spend
+      const result: number = await tx.$executeRaw`
+        UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${creditsUsed}
+        WHERE id = ${userId} AND "aiCreditsUsed" + ${creditsUsed} <= "aiCreditsTotal"
+      `
+      if (result === 0) return // credits exhausted by a concurrent job
       creditsDeducted = true
       await tx.post.create({
         data: {
@@ -219,12 +220,13 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   // 8. Deduct credits atomically BEFORE posting to LinkedIn.
   // This ensures creditsUsed is never 0 on a published post.
   // If credits are exhausted by a concurrent job, we abort rather than posting for free.
-  const creditResult = await prisma.user.updateMany({
-    where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - totalCredits } },
-    data: { aiCreditsUsed: { increment: totalCredits } },
-  })
+  // Atomic: check current DB credits (not stale JS snapshot) to prevent double-spend
+  const creditResult: number = await prisma.$executeRaw`
+    UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${totalCredits}
+    WHERE id = ${userId} AND "aiCreditsUsed" + ${totalCredits} <= "aiCreditsTotal"
+  `
 
-  if (creditResult.count === 0) {
+  if (creditResult === 0) {
     console.log(`[worker] User ${userId} ran out of credits (concurrent job) — aborting LinkedIn post`)
     await prisma.post.create({
       data: {

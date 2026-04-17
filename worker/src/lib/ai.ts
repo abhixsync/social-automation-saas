@@ -96,12 +96,23 @@ export async function generatePost(
     }
   } else {
     const groqModel = GROQ_MODELS[modelKey] ?? GROQ_MODELS.llama_3_3_70b
-    const response = await groqClient().chat.completions.create({
-      model: groqModel,
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }],
-    })
-    content = response.choices[0]?.message?.content ?? ''
+    try {
+      const response = await groqClient().chat.completions.create({
+        model: groqModel,
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+      })
+      content = response.choices[0]?.message?.content ?? ''
+    } catch (err) {
+      console.warn('[ai] Groq unavailable, falling back to Anthropic:', err)
+      const response = await anthropicClient().messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+      })
+      const block = response.content[0]
+      content = block.type === 'text' ? block.text : ''
+    }
   }
 
   content = sanitizeForLinkedIn(content)
