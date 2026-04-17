@@ -5,6 +5,17 @@ import { getToken } from 'next-auth/jwt'
 import { resolveAppMode, isPathLocked, MODE_CONFIG } from '@/lib/app-mode'
 import type { AppMode } from '@/lib/app-mode'
 
+// Security headers applied to every response
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains')
+  }
+  return response
+}
+
 // Module-level TTL cache — proxy cannot use unstable_cache (outside render tree)
 let _cachedMode: AppMode | null = null
 let _cacheExpiry = 0
@@ -51,13 +62,13 @@ export async function proxy(request: NextRequest) {
       maxAge: 60 * 60 * 24,
       path: '/',
     })
-    return response
+    return addSecurityHeaders(response)
   }
 
   // ── Step 2: Bypass cookie — skip all mode checks ──────────────────────────
   const bypassCookie = request.cookies.get('app_mode_bypass')?.value
   if (bypassSecret && bypassCookie === bypassSecret) {
-    return NextResponse.next()
+    return addSecurityHeaders(NextResponse.next())
   }
 
   // ── Step 3: Resolve mode ──────────────────────────────────────────────────
@@ -70,7 +81,7 @@ export async function proxy(request: NextRequest) {
     if (config.soft) {
       const forwardedHeaders = new Headers(request.headers)
       forwardedHeaders.set('x-app-mode', mode)
-      return NextResponse.next({ request: { headers: forwardedHeaders } })
+      return addSecurityHeaders(NextResponse.next({ request: { headers: forwardedHeaders } }))
     }
 
     // ── Step 5: Always allow /maintenance, /_next, /favicon ──────────────
@@ -79,12 +90,12 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith('/_next') ||
       pathname.startsWith('/favicon')
     ) {
-      return NextResponse.next()
+      return addSecurityHeaders(NextResponse.next())
     }
 
     // ── Step 6: Lock check — rewrite to /maintenance ──────────────────────
     if (isPathLocked(mode, pathname)) {
-      return NextResponse.rewrite(new URL('/maintenance', request.url))
+      return addSecurityHeaders(NextResponse.rewrite(new URL('/maintenance', request.url)))
     }
   }
 
@@ -114,18 +125,18 @@ export async function proxy(request: NextRequest) {
   if (isProtected && !hasSession) {
     const loginUrl = new URL('/auth/login', request.url)
     loginUrl.searchParams.set('callbackUrl', pathname)
-    return NextResponse.redirect(loginUrl)
+    return addSecurityHeaders(NextResponse.redirect(loginUrl))
   }
 
   if (isAuthRoute && hasSession) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return addSecurityHeaders(NextResponse.redirect(new URL('/dashboard', request.url)))
   }
 
   // Redirect authenticated users away from the homepage to dashboard
   if (pathname === '/' && hasSession) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return addSecurityHeaders(NextResponse.redirect(new URL('/dashboard', request.url)))
   }
 
-  return NextResponse.next()
+  return addSecurityHeaders(NextResponse.next())
 }
 
