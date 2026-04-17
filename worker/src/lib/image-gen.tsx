@@ -1,6 +1,6 @@
 import { ImageResponse } from '@vercel/og'
 
-export type ImageStyle = 'quote_card' | 'stats_card' | 'topic_card' | 'minimal_light' | 'minimal_dark' | 'list_card' | 'stock_photo' | 'ai_generated'
+export type ImageStyle = 'quote_card' | 'stats_card' | 'topic_card' | 'minimal_light' | 'minimal_dark' | 'list_card' | 'stock_photo'
 
 // Use Satori's built-in fonts — avoids WOFF2/variable-font/binary-corruption issues.
 function getFont(): ArrayBuffer | null {
@@ -59,7 +59,6 @@ const GRADIENTS: Record<ImageStyle, [string, string]> = {
   minimal_dark: ['#1a1a2e', '#16213e'],
   list_card: ['#667eea', '#764ba2'],
   stock_photo: ['#10b981', '#059669'],
-  ai_generated: ['#f59e0b', '#d97706'],
 }
 
 export async function generatePostImage(opts: {

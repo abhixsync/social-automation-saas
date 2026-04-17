@@ -6,8 +6,7 @@ import { generatePostImage } from '../lib/image-gen.js'
 import { generateCarouselSlides } from '../lib/carousel-gen.js'
 import { pngsToPdf } from '../lib/pdf.js'
 import { fetchStockPhoto } from '../lib/pexels.js'
-import { generateAIImage } from '../lib/ai-image.js'
-import { wordsToCredits, IMAGE_CREDITS, AI_IMAGE_CREDITS, CAROUSEL_CREDITS } from '../lib/credits.js'
+import { wordsToCredits, IMAGE_CREDITS, CAROUSEL_CREDITS } from '../lib/credits.js'
 import { sendPostReadyEmail } from '../lib/email.js'
 
 interface JobData {
@@ -189,15 +188,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   let imageBuffer: Buffer | null = null
 
   if (shouldPostImage) {
-    if (imgStyle === 'ai_generated') {
-      // AI-generated image via DALL-E 3
-      try {
-        imageBuffer = await generateAIImage(topic, niche)
-      } catch (aiErr) {
-        console.warn(`[worker] DALL-E image generation failed, falling back to text-only:`, aiErr)
-        imageBuffer = null
-      }
-    } else if (imgStyle === 'stock_photo') {
+    if (imgStyle === 'stock_photo') {
       // Fetch stock photo from Pexels
       imageBuffer = await fetchStockPhoto(topic, niche)
       if (!imageBuffer) console.warn(`[worker] Pexels returned no photo, falling back to text-only`)
@@ -222,7 +213,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
     }
   }
 
-  const imgCredits = (imgStyle === 'ai_generated') ? AI_IMAGE_CREDITS : IMAGE_CREDITS
+  const imgCredits = IMAGE_CREDITS
   const totalCredits = creditsUsed + (imageBuffer ? imgCredits : 0)
 
   // 8. Deduct credits atomically BEFORE posting to LinkedIn.

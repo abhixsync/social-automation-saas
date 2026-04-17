@@ -6,8 +6,7 @@ import { generatePostImage, type ImageStyle } from '@/lib/image-gen'
 import { generateCarouselSlides } from '@/lib/carousel-gen'
 import { pngsToPdf } from '@/lib/pdf'
 import { fetchStockPhoto } from '@/lib/pexels'
-import { generateAIImage } from '@/lib/ai-image'
-import { IMAGE_CREDITS, AI_IMAGE_CREDITS, CAROUSEL_CREDITS } from '@/lib/credits'
+import { IMAGE_CREDITS, CAROUSEL_CREDITS } from '@/lib/credits'
 
 export async function POST(
   _req: NextRequest,
@@ -86,29 +85,6 @@ export async function POST(
       } catch (err) {
         console.warn('[posts/approve] Custom image fetch failed, posting text-only:', err)
         imageBuffer = null
-      }
-    } else if ((prefs?.imageStyle ?? 'quote_card') === 'ai_generated') {
-      // AI-generated image via DALL-E 3
-      const remaining = user.aiCreditsTotal - user.aiCreditsUsed
-      if (remaining >= AI_IMAGE_CREDITS) {
-        const creditResult = await prisma.user.updateMany({
-          where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - AI_IMAGE_CREDITS } },
-          data: { aiCreditsUsed: { increment: AI_IMAGE_CREDITS } },
-        })
-        if (creditResult.count > 0) {
-          imageCreditsCost = AI_IMAGE_CREDITS
-          try {
-            imageBuffer = await generateAIImage(post.topic, prefs?.niche ?? 'tech professional')
-          } catch (aiErr) {
-            console.warn('[posts/approve] DALL-E image generation failed, refunding and posting text-only:', aiErr)
-            await prisma.user.updateMany({
-              where: { id: userId, aiCreditsUsed: { gte: AI_IMAGE_CREDITS } },
-              data: { aiCreditsUsed: { decrement: AI_IMAGE_CREDITS } },
-            })
-            imageCreditsCost = 0
-            imageBuffer = null
-          }
-        }
       }
     } else if ((prefs?.imageStyle ?? 'quote_card') === 'stock_photo') {
       // Stock photo from Pexels

@@ -2,7 +2,6 @@
 export const WORDS_PER_CREDIT = 50
 
 export const IMAGE_CREDITS = 5
-export const AI_IMAGE_CREDITS = 20
 export const CAROUSEL_CREDITS = 25
 
 export function wordsToCredits(wordCount: number): number {

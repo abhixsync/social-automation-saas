@@ -61,19 +61,6 @@ export async function GET(
   const style = (post.imageStyle ?? prefs?.imageStyle ?? 'quote_card') as ImageStyle
   const niche = prefs?.niche ?? 'tech professional'
 
-  // AI-generated: too costly/slow for preview — show a placeholder card instead
-  // The actual DALL-E image is generated at publish time only
-  if (style === 'ai_generated') {
-    const displayName = account?.displayName ?? user?.name ?? 'Professional'
-    const plan = (user?.lifetimeFree ? 'pro' : (user?.plan ?? 'free')) as 'free' | 'pro'
-    const brandColor = prefs?.brandColor ?? undefined
-    const d = encodeBase64url(JSON.stringify({ style: 'quote_card' as const, content: post.generatedContent, topic: post.topic, niche, displayName, plan, brandColor }))
-    const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? ''
-    const sig = createHash('sha256').update(d + secret).digest('hex').slice(0, 16)
-    const edgeUrl = new URL(`/api/image-render?d=${d}&sig=${sig}`, req.url)
-    return NextResponse.redirect(edgeUrl)
-  }
-
   // Stock photo: fetch from Pexels directly (no edge route needed)
   if (style === 'stock_photo') {
     const buffer = await fetchStockPhoto(post.topic, niche)
