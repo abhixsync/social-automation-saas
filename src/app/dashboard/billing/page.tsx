@@ -187,31 +187,18 @@ export default async function BillingPage({
                   ? (config.priceINR === 0 ? 'Free' : `₹${config.priceINR}/mo`)
                   : (config.priceUSD === 0 ? 'Free' : `$${config.priceUSD}/mo`)
 
-                const features = planKey === 'free'
-                  ? [
-                      `${config.creditsPerMonth.toLocaleString()} credits/month`,
-                      `≈ ${(config.creditsPerMonth * 50).toLocaleString()} words generated`,
-                      `${config.maxAccounts} LinkedIn account`,
-                      `${modelLabel(config.model)} AI model`,
-                      'Auto-scheduling',
-                      'Image generation (5 credits)',
-                    ]
-                  : [
-                      `${config.creditsPerMonth.toLocaleString()} credits/month`,
-                      `≈ ${(config.creditsPerMonth * 50).toLocaleString()} words generated`,
-                      `Up to ${config.maxAccounts} LinkedIn accounts`,
-                      `${modelLabel(config.model)} AI model`,
-                      'Auto-scheduling',
-                      'Image generation (5 credits)',
-                      'Stock photo integration',
-                      'Carousel posts',
-                      'Priority support',
-                    ]
+                const features = [
+                  `${config.creditsPerMonth.toLocaleString()} credits/mo`,
+                  planKey === 'free'
+                    ? `${config.maxAccounts} LinkedIn account`
+                    : `${config.maxAccounts} LinkedIn accounts`,
+                  modelLabel(config.model),
+                ]
 
                 return (
                   <Card
                     key={planKey}
-                    className={`border-2 transition-colors relative flex flex-col h-full ${
+                    className={`border-2 transition-colors relative ${
                       isCurrent
                         ? 'border-indigo-500 bg-indigo-50/20'
                         : isPro
@@ -219,44 +206,34 @@ export default async function BillingPage({
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    {isPro && !isCurrent && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge className="bg-indigo-600 text-white border-0 hover:bg-indigo-600 px-3">Recommended</Badge>
-                      </div>
-                    )}
-                    <CardHeader className="pb-4 pt-6">
+                    <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-xl font-bold">{config.name}</CardTitle>
+                        <CardTitle className="text-base font-semibold">{config.name}</CardTitle>
                         {isCurrent && (
                           <Badge className="bg-indigo-100 text-indigo-700 border-0 hover:bg-indigo-100">Current</Badge>
                         )}
                       </div>
-                      <p className={`text-4xl font-bold mt-3 ${isPro ? 'text-indigo-700' : 'text-gray-900'}`}>{price}</p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {planKey === 'free' ? 'No credit card required' : 'Billed monthly · cancel anytime'}
-                      </p>
+                      <p className={`text-2xl font-bold mt-1 ${isPro ? 'text-indigo-700' : 'text-gray-900'}`}>{price}</p>
                     </CardHeader>
-                    <CardContent className="flex flex-col flex-1 space-y-5">
-                      <ul className="space-y-3 flex-1">
+                    <CardContent className="space-y-4">
+                      <ul className="space-y-2">
                         {features.map((f) => (
-                          <li key={f} className="flex items-center gap-2.5 text-sm text-gray-700">
-                            <CheckCircle className={`w-4 h-4 flex-shrink-0 ${isPro ? 'text-indigo-500' : 'text-green-500'}`} />
+                          <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
+                            <CheckCircle className="w-4 h-4 flex-shrink-0 text-green-500" />
                             {f}
                           </li>
                         ))}
                       </ul>
                       {!isCurrent && planKey !== 'free' && (
-                        <div className="pt-2">
-                          <BillingActions currentPlan={currentPlan} mode="upgrade" targetPlan={planKey} userName={userName} userEmail={userEmail} />
-                        </div>
+                        <BillingActions currentPlan={currentPlan} mode="upgrade" targetPlan={planKey} userName={userName} userEmail={userEmail} />
                       )}
                       {isCurrent && (
-                        <p className="text-sm text-indigo-600 font-medium text-center py-2 bg-indigo-50 rounded-lg">
+                        <p className="text-sm text-indigo-600 font-medium text-center py-1.5 bg-indigo-50 rounded-lg">
                           Your current plan
                         </p>
                       )}
                       {!isCurrent && planKey === 'free' && currentPlan !== 'free' && (
-                        <p className="text-xs text-gray-400 text-center py-2">Downgrade by cancelling your subscription</p>
+                        <p className="text-xs text-gray-400 text-center py-1.5">Downgrade by cancelling your subscription</p>
                       )}
                     </CardContent>
                   </Card>
