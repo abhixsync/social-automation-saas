@@ -18,6 +18,11 @@ export interface DodoSubscriptionEventData {
   product_id: string
   status: string
   metadata?: Record<string, string>
+  customer?: {
+    customer_id?: string
+    email?: string
+    name?: string
+  }
 }
 
 export interface DodoPaymentEventData {

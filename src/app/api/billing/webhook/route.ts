@@ -45,8 +45,21 @@ export async function POST(req: NextRequest) {
     switch (type) {
       case 'subscription.active': {
         const data = event.data as DodoSubscriptionEventData
-        const userId = data.metadata?.user_id
-        if (!userId) break
+        // Try metadata first; fall back to customer email lookup
+        let userId = data.metadata?.user_id
+        if (!userId) {
+          const email = data.customer?.email
+          if (!email) {
+            console.error('[dodo/webhook] subscription.active: no user_id in metadata and no customer email')
+            break
+          }
+          const found = await prisma.user.findFirst({ where: { email }, select: { id: true } })
+          if (!found) {
+            console.error('[dodo/webhook] subscription.active: no user found for email', email)
+            break
+          }
+          userId = found.id
+        }
 
         await prisma.user.update({
           where: { id: userId },

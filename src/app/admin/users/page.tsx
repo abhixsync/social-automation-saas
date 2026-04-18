@@ -49,7 +49,7 @@ export default async function AdminUsersPage() {
                   {user.createdAt.toLocaleDateString()}
                 </td>
                 <td className="px-4 py-3">
-                  <UserActions userId={user.id} lifetimeFree={user.lifetimeFree} />
+                  <UserActions userId={user.id} lifetimeFree={user.lifetimeFree} plan={user.plan} />
                 </td>
               </tr>
             ))}
