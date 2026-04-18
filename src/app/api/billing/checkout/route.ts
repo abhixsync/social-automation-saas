@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       name: user.name ?? undefined,
       customerId: user.dodoCustomerId ?? undefined,
       countryCode,
-      returnUrl: `${appUrl}/dashboard/billing?success=1`,
+      returnUrl: `${appUrl}/api/billing/success`,
       cancelUrl: `${appUrl}/dashboard/billing`,
       metadata: { user_id: user.id, plan },
     })

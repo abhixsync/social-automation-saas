@@ -12,6 +12,10 @@ export interface DodoSubscription {
  * Cancel a subscription at the next billing date (customer keeps access until then).
  * Pass immediately: true to revoke access now (fraud/abuse only).
  */
+export async function getSubscription(subscriptionId: string): Promise<DodoSubscription> {
+  return dodoFetch<DodoSubscription>(`/subscriptions/${subscriptionId}`)
+}
+
 export async function cancelSubscription(
   subscriptionId: string,
   opts: { immediately?: boolean } = {},
