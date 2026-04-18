@@ -90,13 +90,15 @@ export async function generatePost(
 
   let content: string
 
+  const AI_TIMEOUT = 60_000 // 60 s — prevents the single-concurrency worker from stalling indefinitely
+
   if (modelKey === 'claude_sonnet') {
     try {
       const response = await anthropicClient().messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         messages: [{ role: 'user', content: prompt }],
-      })
+      }, { signal: AbortSignal.timeout(AI_TIMEOUT) })
       const block = response.content[0]
       content = block.type === 'text' ? block.text : ''
     } catch (err) {
@@ -105,7 +107,7 @@ export async function generatePost(
         model: GROQ_MODELS.llama_3_3_70b,
         max_tokens: 1024,
         messages: [{ role: 'user', content: prompt }],
-      })
+      }, { signal: AbortSignal.timeout(AI_TIMEOUT) })
       content = response.choices[0]?.message?.content ?? ''
     }
   } else {
@@ -115,7 +117,7 @@ export async function generatePost(
         model: groqModel,
         max_tokens: 1024,
         messages: [{ role: 'user', content: prompt }],
-      })
+      }, { signal: AbortSignal.timeout(AI_TIMEOUT) })
       content = response.choices[0]?.message?.content ?? ''
     } catch (err) {
       console.warn('[ai] Groq unavailable, falling back to Anthropic:', err)
@@ -123,7 +125,7 @@ export async function generatePost(
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         messages: [{ role: 'user', content: prompt }],
-      })
+      }, { signal: AbortSignal.timeout(AI_TIMEOUT) })
       const block = response.content[0]
       content = block.type === 'text' ? block.text : ''
     }

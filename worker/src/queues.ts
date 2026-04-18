@@ -19,7 +19,9 @@ export const postQueue = new Queue('linkedin-posts', {
   connection: redis,
   defaultJobOptions: {
     removeOnComplete: { count: 100 }, // Keep only last 100 completed jobs
-    removeOnFail: { count: 50 },      // Keep only last 50 failed jobs
+    removeOnFail: { count: 200 },     // Keep last 200 failed jobs for debugging
+    attempts: 2,                      // Retry once on transient failures (LinkedIn 429, network errors)
+    backoff: { type: 'exponential', delay: 30_000 }, // 30 s → 60 s
   },
 })
 

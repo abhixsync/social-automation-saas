@@ -24,12 +24,15 @@ export default function ForgotPasswordPage() {
   })
 
   async function onSubmit(data: FormData) {
-    await fetch('/api/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: data.email }),
-    })
-    // Always show success — never reveal whether the email exists
+    try {
+      await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email }),
+      })
+    } catch {
+      // Network error — still show success to avoid revealing whether the email exists
+    }
     setSubmitted(true)
   }
 

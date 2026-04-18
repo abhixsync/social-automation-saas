@@ -265,7 +265,7 @@ export default function SchedulePage() {
             <DialogDescription>Choose which LinkedIn account to generate a post for.</DialogDescription>
           </DialogHeader>
           <div className="py-2">
-            <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+            <Select value={selectedAccountId} onValueChange={(v) => v && setSelectedAccountId(v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select account" />
               </SelectTrigger>

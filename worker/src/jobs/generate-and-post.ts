@@ -12,6 +12,7 @@ import { sendPostReadyEmail } from '../lib/email.js'
 interface JobData {
   userId: string
   accountId: string
+  manualReservation?: number // credits pre-deducted by the API route to prevent queue flooding
 }
 
 export async function generateAndPost(job: Job<JobData>): Promise<void> {
@@ -218,44 +219,48 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   const totalCredits = creditsUsed + (imageBuffer ? imgCredits : 0)
 
   // 8. Deduct credits atomically BEFORE posting to LinkedIn.
-  // This ensures creditsUsed is never 0 on a published post.
-  // If credits are exhausted by a concurrent job, we abort rather than posting for free.
-  // Atomic: check current DB credits (not stale JS snapshot) to prevent double-spend
-  const creditResult: number = await prisma.$executeRaw`
-    UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${totalCredits}
-    WHERE id = ${userId} AND "aiCreditsUsed" + ${totalCredits} <= "aiCreditsTotal"
-  `
+  // For manually-triggered jobs, the API route already reserved 1 credit to prevent queue flooding.
+  // We subtract that reservation from the net amount so the user is charged exactly `totalCredits`.
+  // lifetimeFree users bypass credit accounting entirely.
+  const reservation = job.data.manualReservation ?? 0
+  const netCredits = Math.max(0, totalCredits - reservation)
 
-  if (creditResult === 0) {
-    console.log(`[worker] User ${userId} ran out of credits (concurrent job) — aborting LinkedIn post`)
-    await prisma.post.create({
-      data: {
-        userId,
-        linkedInAccountId: accountId,
-        topic,
-        generatedContent: content,
-        wordCount,
-        creditsUsed: 0,
-        status: 'failed',
-        aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
-        includeImage: false,
-        errorMessage: 'Insufficient credits',
-      },
-    })
-    return
-  }
+  if (!user.lifetimeFree && netCredits > 0) {
+    const creditResult: number = await prisma.$executeRaw`
+      UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${netCredits}
+      WHERE id = ${userId} AND "aiCreditsUsed" + ${netCredits} <= "aiCreditsTotal"
+    `
+    if (creditResult === 0) {
+      console.log(`[worker] User ${userId} ran out of credits (concurrent job) — aborting LinkedIn post`)
+      await prisma.post.create({
+        data: {
+          userId,
+          linkedInAccountId: accountId,
+          topic,
+          generatedContent: content,
+          wordCount,
+          creditsUsed: 0,
+          status: 'failed',
+          aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+          includeImage: false,
+          errorMessage: 'Insufficient credits',
+        },
+      })
+      return
+    }
+  } // end lifetimeFree / netCredits guard
 
   // 9. Post to LinkedIn (carousel or standard)
   let useCarousel = prefs?.carouselMode ?? false
   try {
     let carouselCost = 0
     if (useCarousel) {
-      // Atomically deduct carousel credits BEFORE generation
-      const carouselCreditResult = await prisma.user.updateMany({
-        where: { id: userId, aiCreditsUsed: { lte: user.aiCreditsTotal - CAROUSEL_CREDITS } },
-        data: { aiCreditsUsed: { increment: CAROUSEL_CREDITS } },
-      })
-      if (carouselCreditResult.count === 0) {
+      // Atomically deduct carousel credits BEFORE generation (use live DB columns, not stale JS snapshot)
+      const carouselCreditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
+        UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${CAROUSEL_CREDITS}
+        WHERE id = ${userId} AND "aiCreditsUsed" + ${CAROUSEL_CREDITS} <= "aiCreditsTotal"
+      `
+      if (carouselCreditResult === 0) {
         console.warn(`[worker] Insufficient credits for carousel — falling back to standard post`)
         useCarousel = false
       } else {

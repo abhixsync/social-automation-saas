@@ -92,6 +92,7 @@ export default function BillingActions({
         prefill: { name: userName, email: userEmail },
         theme: { color: '#4f46e5' },
         handler: () => {
+          setLoading(false)
           router.push('/dashboard/billing?success=1')
           router.refresh()
         },

@@ -13,7 +13,7 @@ export async function POST(
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { allowed } = await checkRateLimit(`regenerate:${session.user.id}`, 10, 60, { failOpen: true })
+  const { allowed } = await checkRateLimit(`regenerate:${session.user.id}`, 10, 60)
   if (!allowed) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }

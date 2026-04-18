@@ -156,15 +156,18 @@ export async function POST(
   try {
     // Carousel path: generate slides → PDF → LinkedIn document post
     if (post.isCarousel) {
-      const remaining = user.aiCreditsTotal - user.aiCreditsUsed
       let carouselCost = 0
-      if (remaining >= CAROUSEL_CREDITS) {
-        const creditResult: number = await prisma.$executeRaw`
+      let linkedInPosted = false
+
+      // Only attempt carousel if credits are available (lifetimeFree bypasses credit check)
+      const canAffordCarousel = user.lifetimeFree || (user.aiCreditsTotal - user.aiCreditsUsed) >= CAROUSEL_CREDITS
+      if (canAffordCarousel) {
+        const creditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
           UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${CAROUSEL_CREDITS}
           WHERE id = ${userId} AND "aiCreditsUsed" + ${CAROUSEL_CREDITS} <= "aiCreditsTotal"
         `
         if (creditResult > 0) {
-          carouselCost = CAROUSEL_CREDITS
+          carouselCost = user.lifetimeFree ? 0 : CAROUSEL_CREDITS
           try {
             const slides = await generateCarouselSlides({
               content: post.generatedContent,
@@ -176,22 +179,29 @@ export async function POST(
             })
             const pdfBuffer = await pngsToPdf(slides)
             await postCarouselToLinkedIn(account.accessTokenEncrypted, account.sub, post.generatedContent, pdfBuffer)
+            linkedInPosted = true
           } catch (carouselErr) {
-            console.warn('[posts/approve] Carousel generation/upload failed, refunding:', carouselErr)
-            await prisma.user.updateMany({
-              where: { id: userId, aiCreditsUsed: { gte: CAROUSEL_CREDITS } },
-              data: { aiCreditsUsed: { decrement: CAROUSEL_CREDITS } },
-            })
-            carouselCost = 0
-            // Fall back to regular image or text-only post
-            if (imageBuffer) {
-              await postToLinkedInWithImage(account.accessTokenEncrypted, account.sub, post.generatedContent, imageBuffer)
-            } else {
-              await postToLinkedIn(account.accessTokenEncrypted, account.sub, post.generatedContent)
+            console.warn('[posts/approve] Carousel failed, refunding and falling back:', carouselErr)
+            if (!user.lifetimeFree) {
+              await prisma.user.updateMany({
+                where: { id: userId, aiCreditsUsed: { gte: CAROUSEL_CREDITS } },
+                data: { aiCreditsUsed: { decrement: CAROUSEL_CREDITS } },
+              })
             }
+            carouselCost = 0
           }
         }
       }
+
+      // Fall back to standard post if carousel wasn't posted (insufficient credits, race, or error)
+      if (!linkedInPosted) {
+        if (imageBuffer) {
+          await postToLinkedInWithImage(account.accessTokenEncrypted, account.sub, post.generatedContent, imageBuffer)
+        } else {
+          await postToLinkedIn(account.accessTokenEncrypted, account.sub, post.generatedContent)
+        }
+      }
+
       const updated = await prisma.post.update({
         where: { id },
         data: {

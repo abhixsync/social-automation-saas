@@ -31,21 +31,25 @@ export default function SignupForm() {
 
   async function onSubmit(data: FormData) {
     setError('')
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    const json = await res.json()
-    if (!res.ok) {
-      setError(json.error || 'Registration failed')
-      return
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(json.error || 'Registration failed')
+        return
+      }
+      await signIn('credentials', {
+        email: data.email,
+        password: data.password,
+        callbackUrl: '/dashboard',
+      })
+    } catch {
+      setError('Network error. Please check your connection and try again.')
     }
-    await signIn('credentials', {
-      email: data.email,
-      password: data.password,
-      callbackUrl: '/dashboard',
-    })
   }
 
   async function handleGoogle() {
