@@ -209,6 +209,7 @@ export default function PostsPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed to approve')
       toast.success('Post published to LinkedIn', { id: toastId })
+      if (viewPost?.id === post.id) closeViewPost()
       fetchPosts(activeTab, page)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to approve post', { id: toastId })
@@ -228,6 +229,10 @@ export default function PostsPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed to regenerate')
       toast.success('Post regenerated successfully', { id: toastId })
+      if (viewPost?.id === post.id) {
+        setViewPost((v) => v ? { ...v, generatedContent: json.post.generatedContent, wordCount: json.post.wordCount, creditsUsed: json.post.creditsUsed } : v)
+        setEditContent(json.post.generatedContent)
+      }
       fetchPosts(activeTab, page)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to regenerate post', { id: toastId })

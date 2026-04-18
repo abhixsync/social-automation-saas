@@ -12,8 +12,47 @@ worker.on('completed', (job) => {
   console.log(`[worker] Job ${job.id} completed`)
 })
 
-worker.on('failed', (job, err) => {
-  console.error(`[worker] Job ${job?.id} failed:`, err.message)
+worker.on('stalled', (jobId) => {
+  console.warn(`[worker] Job ${jobId} stalled — lock expired before completion. Credits may have been deducted without a post being created.`)
+})
+
+worker.on('failed', async (job, err) => {
+  console.error(`[worker] Job ${job?.id} failed (attempt ${job?.attemptsMade ?? '?'}):`, err.message)
+
+  // On final failure, ensure a Post record exists so the user can see what happened.
+  // This guards against the case where the job stalled/crashed after credit deduction
+  // but before the Post record was created.
+  const isFinalFailure = job && (job.opts.attempts ?? 1) <= job.attemptsMade
+  if (isFinalFailure && job.data?.userId && job.data?.accountId) {
+    try {
+      const recent = await prisma.post.findFirst({
+        where: {
+          userId: job.data.userId,
+          linkedInAccountId: job.data.accountId,
+          createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) },
+        },
+        select: { id: true },
+      })
+      if (!recent) {
+        await prisma.post.create({
+          data: {
+            userId: job.data.userId,
+            linkedInAccountId: job.data.accountId,
+            topic: 'N/A',
+            generatedContent: '',
+            wordCount: 0,
+            creditsUsed: 0,
+            status: 'failed',
+            aiModel: 'llama_3_3_70b',
+            errorMessage: `Job failed after all retries: ${err.message.slice(0, 400)}`,
+          },
+        })
+        console.log(`[worker] Created failed Post record for job ${job.id} (no prior record found)`)
+      }
+    } catch (dbErr) {
+      console.error('[worker] Could not create failure record:', dbErr)
+    }
+  }
 })
 
 worker.on('error', (err) => {

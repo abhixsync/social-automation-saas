@@ -5,6 +5,7 @@ import Google from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { getPlanCredits } from '@/lib/plan-settings'
+import { checkRateLimit } from '@/lib/ratelimit'
 import type { Plan, Currency } from '@/generated/prisma/enums'
 
 // Extend NextAuth types
@@ -46,6 +47,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
+
+        // Rate limit: 10 login attempts per email per 5 minutes
+        // failOpen: true — Redis outage must never lock out legitimate users
+        const { allowed } = await checkRateLimit(
+          `login:${(credentials.email as string).toLowerCase()}`,
+          10, 300, { failOpen: true },
+        )
+        if (!allowed) return null
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },

@@ -17,7 +17,13 @@ export default function NotificationBanner({
 
   async function dismiss(id: string) {
     setDismissed((prev) => new Set(prev).add(id))
-    await fetch(`/api/notifications/${id}/read`, { method: 'POST' }).catch(() => null)
+    try {
+      const res = await fetch(`/api/notifications/${id}/read`, { method: 'POST' })
+      if (!res.ok) throw new Error('Failed')
+    } catch {
+      // Rollback optimistic dismiss so the banner reappears
+      setDismissed((prev) => { const next = new Set(prev); next.delete(id); return next })
+    }
   }
 
   const visible = notifications.filter((n) => !dismissed.has(n.id))
