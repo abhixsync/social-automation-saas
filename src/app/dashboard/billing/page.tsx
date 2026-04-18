@@ -111,12 +111,12 @@ export default async function BillingPage({
         </Card>
       )}
 
-      {/* Non-lifetime: two-column layout — left: current plan + top-up, right: plan cards */}
+      {/* Non-lifetime: current plan + topup side by side, plan cards below */}
       {!lifetimeFree && (
-        <div className="flex flex-col lg:flex-row gap-6 mb-8">
-          {/* Left column */}
-          <div className="flex flex-col gap-6 lg:w-2/5">
-            <Card className="border-indigo-200 bg-indigo-50/40">
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Current plan — spans 2 of 3 columns */}
+            <Card className="lg:col-span-2 border-gray-200">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">Current Plan</CardTitle>
@@ -154,6 +154,7 @@ export default async function BillingPage({
               </CardContent>
             </Card>
 
+            {/* Top-up — 1 column */}
             <Card className="border-gray-200">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -174,10 +175,10 @@ export default async function BillingPage({
             </Card>
           </div>
 
-          {/* Right column: plan cards filling full height */}
-          <div className="flex flex-col lg:w-3/5 flex-1">
+          {/* Plan cards */}
+          <div className="mb-8">
             <h3 className="text-base font-semibold text-gray-900 mb-4">All Plans</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1 auto-rows-fr">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {PLAN_ORDER.map((planKey) => {
                 const config = PLAN_CONFIG[planKey]
                 const isCurrent = planKey === currentPlan
@@ -263,7 +264,7 @@ export default async function BillingPage({
               })}
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {currentPlan !== 'free' && !lifetimeFree && (
