@@ -59,7 +59,7 @@ export default function BillingLoading() {
       {/* Plan cards */}
       <div className="space-y-4">
         <Skeleton className="h-5 w-20" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <Card key={i} className="border-gray-200">
               <CardHeader className="pb-3 space-y-1">
