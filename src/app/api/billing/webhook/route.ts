@@ -20,19 +20,24 @@ function productIdToPlan(productId: string): 'pro' | null {
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
 
+  const webhookHeaders = {
+    'webhook-id': req.headers.get('webhook-id') ?? '',
+    'webhook-timestamp': req.headers.get('webhook-timestamp') ?? '',
+    'webhook-signature': req.headers.get('webhook-signature') ?? '',
+  }
+  console.log('[dodo/webhook] Received — id:', webhookHeaders['webhook-id'], 'body preview:', rawBody.slice(0, 300))
+
   let event: ReturnType<typeof verifyDodoWebhook>
   try {
-    event = verifyDodoWebhook(rawBody, {
-      'webhook-id': req.headers.get('webhook-id') ?? '',
-      'webhook-timestamp': req.headers.get('webhook-timestamp') ?? '',
-      'webhook-signature': req.headers.get('webhook-signature') ?? '',
-    })
+    event = verifyDodoWebhook(rawBody, webhookHeaders)
   } catch (err) {
-    console.error('[dodo/webhook] Verification failed:', (err as Error).message)
+    console.error('[dodo/webhook] Verification failed:', (err as Error).message, '| secret set:', !!process.env.DODO_WEBHOOK_SECRET)
     return NextResponse.json({ error: 'Invalid webhook' }, { status: 400 })
   }
 
-  const webhookId = req.headers.get('webhook-id') ?? ''
+  console.log('[dodo/webhook] Verified — type:', event.type, 'data:', JSON.stringify(event.data).slice(0, 300))
+
+  const webhookId = webhookHeaders['webhook-id']
   const type = event.type as DodoWebhookEventType
 
   // Idempotency: skip if already processed (Dodo retries on non-200)
