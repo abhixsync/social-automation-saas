@@ -64,6 +64,13 @@ export default async function BillingPage({
         </div>
       )}
 
+      {currentPlan === 'on_hold' && (
+        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+          <strong>Payment failed.</strong> Your subscription is on hold. Please update your payment
+          method with Dodo Payments to restore Pro access.
+        </div>
+      )}
+
       {params.success && (
         <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-700">
           Your subscription was updated successfully.

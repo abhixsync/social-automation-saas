@@ -17,6 +17,17 @@ interface JobData {
 
 export async function generateAndPost(job: Job<JobData>): Promise<void> {
   const { userId, accountId } = job.data
+  const reservation = job.data.manualReservation ?? 0
+
+  // Refund the API-route reservation on early exit (inactive account, expired token, no credits).
+  // Uses GREATEST to avoid going below 0 if the credit row was already adjusted.
+  async function refundReservation(): Promise<void> {
+    if (reservation <= 0) return
+    await prisma.$executeRaw`
+      UPDATE "User" SET "aiCreditsUsed" = GREATEST("aiCreditsUsed" - ${reservation}, 0)
+      WHERE id = ${userId}
+    `.catch((err) => console.error('[worker] Reservation refund failed:', err))
+  }
 
   // 1. Load user + account + preferences + recent topics (for uniqueness)
   const [user, account, prefs, recentPosts] = await Promise.all([
@@ -66,6 +77,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
 
   if (!user || !account || !account.isActive) {
     console.log(`[worker] Skipping job — user or account not found/inactive`)
+    await refundReservation()
     return
   }
 
@@ -84,6 +96,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         errorMessage: 'LinkedIn access token expired. Please reconnect your account.',
       },
     })
+    await refundReservation()
     console.warn(`[worker] Token expired for account ${accountId}`)
     return
   }
@@ -93,6 +106,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
     const remaining = user.aiCreditsTotal - user.aiCreditsUsed
     if (remaining <= 0) {
       console.log(`[worker] User ${userId} has no credits remaining`)
+      await refundReservation()
       return
     }
   }
@@ -222,7 +236,6 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   // For manually-triggered jobs, the API route already reserved 1 credit to prevent queue flooding.
   // We subtract that reservation from the net amount so the user is charged exactly `totalCredits`.
   // lifetimeFree users bypass credit accounting entirely.
-  const reservation = job.data.manualReservation ?? 0
   const netCredits = Math.max(0, totalCredits - reservation)
 
   if (!user.lifetimeFree && netCredits > 0) {

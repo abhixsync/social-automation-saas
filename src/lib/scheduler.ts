@@ -1,5 +1,6 @@
 import { Queue } from 'bullmq'
 import IORedis from 'ioredis'
+import { prisma } from './prisma'
 
 // ─── Redis connection ─────────────────────────────────────────────────────────
 
@@ -87,11 +88,22 @@ export async function upsertUserSchedule(
 
 export async function removeUserSchedule(userId: string, accountId: string): Promise<void> {
   const queue = getPostQueue()
-  // BullMQ v5: list and remove schedulers matching our prefix
-  const schedulers = await queue.getJobSchedulers()
-  for (const scheduler of schedulers) {
-    if (scheduler.id && scheduler.id.startsWith(`user-${userId}-account-${accountId}-`)) {
-      await queue.removeJobScheduler(scheduler.id)
-    }
-  }
+
+  // Look up stored times from DB to construct scheduler IDs directly.
+  // This avoids paginated listing of all schedulers, which silently misses
+  // entries beyond the first page when there are many users' schedulers in Redis.
+  const existing = await prisma.postSchedule.findUnique({
+    where: { userId_linkedInAccountId: { userId, linkedInAccountId: accountId } },
+    select: { times: true },
+  })
+  if (!existing?.times?.length) return
+
+  // slotKey only depends on HH:MM — daysOfWeek doesn't affect it
+  const slots = buildTimeSlots(existing.times, [0])
+  await Promise.all(
+    slots.map((slot) => {
+      const schedulerId = `user-${userId}-account-${accountId}-slot-${slot.slotKey}`
+      return queue.removeJobScheduler(schedulerId).catch(() => {})
+    }),
+  )
 }

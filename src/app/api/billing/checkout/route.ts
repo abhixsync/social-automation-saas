@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getRazorpay, getPlanId } from '@/lib/razorpay'
-import { z } from 'zod'
-import type { Currency } from '@/generated/prisma/enums'
+import { createCheckoutSession } from '@/lib/dodo/checkout'
+import { DodoApiError } from '@/lib/dodo/client'
 import { checkRateLimit } from '@/lib/ratelimit'
+import { z } from 'zod'
 
 const schema = z.object({
   plan: z.enum(['pro']),
@@ -32,42 +32,41 @@ export async function POST(req: NextRequest) {
         email: true,
         name: true,
         currency: true,
-        razorpayCustomerId: true,
+        plan: true,
+        dodoCustomerId: true,
+        dodoSubscriptionId: true,
       },
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    const currency = user.currency as Currency
-
-    let razorpayCustomerId = user.razorpayCustomerId
-    if (!razorpayCustomerId) {
-      const customer = await getRazorpay().customers.create({
-        name: user.name ?? '',
-        email: user.email ?? '',
-      })
-      razorpayCustomerId = customer.id
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { razorpayCustomerId },
-      })
+    if (user.plan !== 'free' || user.dodoSubscriptionId) {
+      return NextResponse.json({ error: 'You already have an active subscription' }, { status: 409 })
     }
 
-    const planId = getPlanId(plan, currency)
+    const productId = process.env.DODO_PRODUCT_PRO
+    if (!productId) {
+      return NextResponse.json({ error: 'Pro plan not configured' }, { status: 500 })
+    }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const subscription = await (getRazorpay().subscriptions.create as any)({
-      plan_id: planId,
-      customer_notify: 1,
-      quantity: 1,
-      total_count: 120,
-      customer_id: razorpayCustomerId,
+    const countryCode = user.currency === 'INR' ? 'IN' : 'US'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+
+    const checkoutSession = await createCheckoutSession({
+      productId,
+      email: user.email ?? '',
+      name: user.name ?? undefined,
+      customerId: user.dodoCustomerId ?? undefined,
+      countryCode,
+      returnUrl: `${appUrl}/dashboard/billing?success=1`,
+      cancelUrl: `${appUrl}/dashboard/billing`,
+      metadata: { user_id: user.id, plan },
     })
 
-    return NextResponse.json({
-      subscriptionId: subscription.id,
-      keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-    })
+    return NextResponse.json({ checkoutUrl: checkoutSession.checkout_url })
   } catch (err) {
+    if (err instanceof DodoApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
     console.error('[billing/checkout]', err)
     return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 })
   }

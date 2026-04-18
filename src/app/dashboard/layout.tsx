@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { getDbUser, getActiveLinkedInAccounts, getUserPreferences, getActiveSchedule } from '@/lib/dashboard-data'
 import Sidebar from '@/components/dashboard/Sidebar'
 import MobileNav from '@/components/dashboard/MobileNav'
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
@@ -16,24 +16,19 @@ export default async function DashboardLayout({
     redirect('/auth/login')
   }
 
-  // Fetch credits + setup status in one round-trip
+  // Fetch credits + setup status — React cache() deduplicates these calls
+  // if dashboard/page.tsx also calls the same functions in the same request.
   let dbUser = null
   let setupComplete = true
   try {
-    const [user, accountCount, prefs, scheduleCount] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { aiCreditsUsed: true, aiCreditsTotal: true, plan: true, lifetimeFree: true },
-      }),
-      prisma.linkedInAccount.count({ where: { userId: session.user.id, isActive: true } }),
-      prisma.userPreferences.findUnique({
-        where: { userId: session.user.id },
-        select: { contentPillars: true },
-      }),
-      prisma.postSchedule.count({ where: { userId: session.user.id, isActive: true } }),
+    const [user, accounts, prefs, activeSchedule] = await Promise.all([
+      getDbUser(session.user.id),
+      getActiveLinkedInAccounts(session.user.id),
+      getUserPreferences(session.user.id),
+      getActiveSchedule(session.user.id),
     ])
     dbUser = user
-    setupComplete = accountCount > 0 && (prefs?.contentPillars?.length ?? 0) > 0 && scheduleCount > 0
+    setupComplete = accounts.length > 0 && (prefs?.contentPillars?.length ?? 0) > 0 && !!activeSchedule
   } catch {
     // DB error — sidebar will show session credits (stale but usable)
   }

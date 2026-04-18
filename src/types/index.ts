@@ -30,6 +30,14 @@ export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
     priceINR: 999,
     priceUSD: 11.99,
   },
+  on_hold: {
+    name: 'Pro (Payment Failed)',
+    creditsPerMonth: 0,
+    maxAccounts: 0,
+    model: 'llama_3_3_70b',
+    priceINR: 999,
+    priceUSD: 11.99,
+  },
 }
 
 // 1 credit = 50 words

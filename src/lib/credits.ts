@@ -70,7 +70,7 @@ export async function deductCredits(
 }
 
 /**
- * Reset monthly credits for a user (called by Razorpay webhook on subscription renewal).
+ * Reset monthly credits for a user (called by Dodo webhook on subscription renewal).
  * Reads credit amount from SiteSetting (admin-configured), falls back to PLAN_CONFIG.
  * Creates an in-app notification so the user knows their credits were refreshed.
  */

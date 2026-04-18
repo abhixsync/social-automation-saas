@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getDbUser, getActiveLinkedInAccounts, getUserPreferences, getActiveSchedule } from '@/lib/dashboard-data'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
@@ -18,13 +19,11 @@ export default async function DashboardPage() {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [publishedThisMonth, linkedInAccounts, recentPosts, preferences, activeSchedule, totalPosts, dbUser, unreadNotifications] = await Promise.all([
+  // Page-specific queries run fresh; shared queries use React cache() so they
+  // are deduplicated with the identical calls made by layout.tsx in this request.
+  const [publishedThisMonth, recentPosts, totalPosts, unreadNotifications, dbUser, linkedInAccounts, preferences, activeSchedule] = await Promise.all([
     prisma.post.count({
       where: { userId, status: 'published', publishedAt: { gte: startOfMonth } },
-    }),
-    prisma.linkedInAccount.findMany({
-      where: { userId, isActive: true },
-      select: { id: true, displayName: true },
     }),
     prisma.post.findMany({
       where: { userId },
@@ -41,25 +40,18 @@ export default async function DashboardPage() {
         linkedInAccount: { select: { displayName: true } },
       },
     }),
-    prisma.userPreferences.findUnique({
-      where: { userId },
-      select: { contentPillars: true, niche: true },
-    }),
-    prisma.postSchedule.findFirst({
-      where: { userId, isActive: true },
-    }),
     prisma.post.count({ where: { userId } }),
-    // Fetch fresh credits in the same round-trip — avoids a separate DB call
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { aiCreditsUsed: true, aiCreditsTotal: true, plan: true, lifetimeFree: true },
-    }),
     prisma.notification.findMany({
       where: { userId, isRead: false },
       orderBy: { createdAt: 'desc' },
       take: 5,
       select: { id: true, message: true },
     }),
+    // Shared with layout — React cache() deduplicates these (no extra DB round-trips)
+    getDbUser(userId),
+    getActiveLinkedInAccounts(userId),
+    getUserPreferences(userId),
+    getActiveSchedule(userId),
   ])
 
   // Onboarding steps

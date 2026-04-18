@@ -20,6 +20,7 @@ const GROQ_MODELS: Record<string, string> = {
 const PLAN_MODEL: Record<Plan, string> = {
   free: 'llama_3_3_70b',
   pro: 'claude_sonnet',
+  on_hold: 'llama_3_3_70b',
 }
 
 function sanitizeUserInput(input: string): string {

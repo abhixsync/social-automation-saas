@@ -44,6 +44,16 @@ export async function GET(req: NextRequest) {
     // Fetch LinkedIn profile (sub = person ID)
     const userInfo = await getLinkedInUserInfo(tokenData.access_token)
 
+    // Guard: reject if another app user already owns this LinkedIn account.
+    // Without this check the same LinkedIn identity could be linked to multiple app users.
+    const conflictingAccount = await prisma.linkedInAccount.findFirst({
+      where: { sub: userInfo.sub, isActive: true, NOT: { userId: session.user.id } },
+      select: { id: true },
+    })
+    if (conflictingAccount) {
+      return NextResponse.redirect(`${appUrl}/dashboard/accounts?error=account_claimed`)
+    }
+
     // Encrypt and store the token
     const encryptedToken = encryptToken(tokenData.access_token)
     const expiresAt = tokenExpiresAt(tokenData.expires_in ?? 5184000) // 60 days default

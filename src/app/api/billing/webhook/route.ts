@@ -1,128 +1,159 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { verifyWebhookSignature } from '@/lib/razorpay'
+import { verifyDodoWebhook } from '@/lib/dodo/webhooks'
 import { resetMonthlyCredits } from '@/lib/credits'
-import type { Currency } from '@/generated/prisma/enums'
+import { addTopupCredits } from '@/lib/credits'
+import type {
+  DodoSubscriptionEventData,
+  DodoPaymentEventData,
+  DodoWebhookEventType,
+} from '@/lib/dodo/webhooks'
 
-function getPlanFromPlanId(planId: string): 'pro' | null {
-  const currencies: Currency[] = ['INR', 'USD']
-  for (const currency of currencies) {
-    if (process.env[`RAZORPAY_PRO_PLAN_${currency}`] === planId) return 'pro'
+// Map Dodo product_id → internal plan name
+function productIdToPlan(productId: string): 'pro' | null {
+  const map: Record<string, 'pro'> = {
+    [process.env.DODO_PRODUCT_PRO ?? '']: 'pro',
   }
-  return null
+  return map[productId] ?? null
 }
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
-  const signature = req.headers.get('x-razorpay-signature')
 
-  if (!signature) {
-    return NextResponse.json({ error: 'Missing x-razorpay-signature header' }, { status: 400 })
-  }
-
-  const isValid = verifyWebhookSignature(rawBody, signature)
-  if (!isValid) {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let event: any
+  let event: ReturnType<typeof verifyDodoWebhook>
   try {
-    event = JSON.parse(rawBody)
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    event = verifyDodoWebhook(rawBody, {
+      'webhook-id': req.headers.get('webhook-id') ?? '',
+      'webhook-timestamp': req.headers.get('webhook-timestamp') ?? '',
+      'webhook-signature': req.headers.get('webhook-signature') ?? '',
+    })
+  } catch (err) {
+    console.error('[dodo/webhook] Verification failed:', (err as Error).message)
+    return NextResponse.json({ error: 'Invalid webhook' }, { status: 400 })
   }
 
-  // Idempotency: skip duplicate webhook deliveries (Razorpay retries on failure)
-  const eventId =
-    (event.payload?.subscription?.entity?.id ??
-      event.payload?.payment?.entity?.id ??
-      'unknown') +
-    ':' +
-    event.event
-  const existing = await prisma.webhookEvent.findUnique({ where: { eventId } })
+  const webhookId = req.headers.get('webhook-id') ?? ''
+  const type = event.type as DodoWebhookEventType
+
+  // Idempotency: skip if already processed (Dodo retries on non-200)
+  const existing = await prisma.webhookEvent.findUnique({ where: { eventId: webhookId } })
   if (existing) {
     return NextResponse.json({ received: true })
   }
 
   try {
-    switch (event.event) {
-      case 'subscription.activated': {
-        const sub = event.payload.subscription.entity
-        const subscriptionId: string = sub.id
-        const planId: string = sub.plan_id
+    switch (type) {
+      case 'subscription.active': {
+        const data = event.data as DodoSubscriptionEventData
+        const userId = data.metadata?.user_id
+        if (!userId) break
 
-        const plan = getPlanFromPlanId(planId)
-        if (!plan) break
-
-        const user = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { razorpaySubscriptionId: subscriptionId },
-              { razorpayCustomerId: sub.customer_id },
-            ],
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            plan: 'pro',
+            dodoSubscriptionId: data.subscription_id,
+            dodoCustomerId: data.customer_id,
           },
-          select: { id: true },
         })
-        if (!user) break
-
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { plan, razorpaySubscriptionId: subscriptionId },
-        })
-        await resetMonthlyCredits(user.id, plan)
+        await resetMonthlyCredits(userId, 'pro')
         break
       }
 
-      case 'subscription.charged': {
-        const sub = event.payload.subscription.entity
-        const subscriptionId: string = sub.id
-        const planId: string = sub.plan_id
-
-        const plan = getPlanFromPlanId(planId)
-        if (!plan) break
-
+      case 'subscription.renewed': {
+        const data = event.data as DodoSubscriptionEventData
         const user = await prisma.user.findFirst({
-          where: { razorpaySubscriptionId: subscriptionId },
+          where: { dodoSubscriptionId: data.subscription_id },
           select: { id: true },
         })
         if (!user) break
 
-        await resetMonthlyCredits(user.id, plan)
+        await resetMonthlyCredits(user.id, 'pro')
         break
       }
 
-      case 'subscription.cancelled':
-      case 'subscription.completed': {
-        const sub = event.payload.subscription.entity
-        const subscriptionId: string = sub.id
-
-        const user = await prisma.user.findFirst({
-          where: { razorpaySubscriptionId: subscriptionId },
-          select: { id: true },
+      case 'subscription.on_hold': {
+        const data = event.data as DodoSubscriptionEventData
+        await prisma.user.updateMany({
+          where: { dodoSubscriptionId: data.subscription_id },
+          data: { plan: 'on_hold' },
         })
-        if (!user) break
+        break
+      }
 
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { plan: 'free', razorpaySubscriptionId: null },
+      case 'subscription.cancelled': {
+        const data = event.data as DodoSubscriptionEventData
+        await prisma.user.updateMany({
+          where: { dodoSubscriptionId: data.subscription_id },
+          data: { plan: 'free', dodoSubscriptionId: null },
         })
-        await resetMonthlyCredits(user.id, 'free')
         break
       }
 
-      case 'payment.captured': {
-        // Top-up payments are handled by the /api/billing/verify endpoint
+      case 'subscription.plan_changed': {
+        const data = event.data as DodoSubscriptionEventData
+        const plan = productIdToPlan(data.product_id)
+        if (plan) {
+          await prisma.user.updateMany({
+            where: { dodoSubscriptionId: data.subscription_id },
+            data: { plan },
+          })
+        }
         break
       }
+
+      case 'payment.succeeded': {
+        // One-time topup purchase
+        const data = event.data as DodoPaymentEventData
+        const userId = data.metadata?.user_id
+        const creditsStr = data.metadata?.credits
+        if (!userId || !creditsStr) break
+
+        const credits = parseInt(creditsStr, 10)
+        if (isNaN(credits) || credits <= 0) break
+
+        await addTopupCredits(userId, credits)
+        await prisma.creditTopup.create({
+          data: {
+            userId,
+            credits,
+            amount: data.amount,
+            currency: data.currency === 'INR' ? 'INR' : 'USD',
+            dodoPaymentId: data.payment_id,
+          },
+        })
+        await prisma.notification.create({
+          data: {
+            userId,
+            message: `${credits} credits added to your account.`,
+          },
+        })
+        break
+      }
+
+      case 'payment.failed': {
+        const data = event.data as DodoPaymentEventData
+        console.log('[dodo] payment.failed', { paymentId: data.payment_id })
+        break
+      }
+
+      case 'refund.succeeded': {
+        const data = event.data as DodoPaymentEventData
+        console.log('[dodo] refund.succeeded', { paymentId: data.payment_id, amount: data.amount })
+        break
+      }
+
+      default:
+        console.log(`[dodo/webhook] Unhandled event type: ${type}`)
     }
   } catch (err) {
-    console.error(`[webhook] Error handling ${event?.event}:`, err)
-    // Return 200 anyway — Razorpay retries on non-200
+    console.error(`[dodo/webhook] Error handling ${type}:`, err)
+    // Return 500 so Dodo retries — don't mark as processed
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
-  // Record event as processed (catch to not fail on race condition)
-  await prisma.webhookEvent.create({ data: { eventId } }).catch(() => {})
+  // Mark as processed only after successful handling
+  await prisma.webhookEvent.create({ data: { eventId: webhookId } }).catch(() => {})
 
   return NextResponse.json({ received: true })
 }

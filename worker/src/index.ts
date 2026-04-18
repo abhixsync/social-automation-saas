@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 import { createWorker, redis } from './queues.js'
 import { generateAndPost } from './jobs/generate-and-post.js'
 import { checkExpiringTokens } from './jobs/check-expiring-tokens.js'
+import { runCleanup } from './jobs/cleanup.js'
 import { prisma } from './lib/prisma.js'
 
 // ─── BullMQ worker ────────────────────────────────────────────────────────────
@@ -67,6 +68,11 @@ async function runDailyChecks(): Promise<void> {
     await checkExpiringTokens()
   } catch (err) {
     console.error('[worker] checkExpiringTokens failed:', err)
+  }
+  try {
+    await runCleanup()
+  } catch (err) {
+    console.error('[worker] runCleanup failed:', err)
   }
 }
 

@@ -13,7 +13,9 @@
     "db:seed": "ts-node prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:setup": "prisma migrate dev && npm run db:seed",
-    "db:reset": "prisma migrate reset && npm run db:seed"
+    "db:reset": "prisma migrate reset && npm run db:seed",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -54,7 +56,6 @@
     "pdf-lib": "^1.17.1",
     "pg": "^8.20.0",
     "playwright": "^1.59.1",
-    "razorpay": "^2.9.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.72.1",
@@ -69,6 +70,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
@@ -76,8 +78,10 @@
     "dotenv": "^17.4.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "jest": "^30.3.0",
     "prisma": "^7.7.0",
     "tailwindcss": "^4",
+    "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
     "typescript": "^5"
   }

@@ -57,8 +57,15 @@ export async function POST(
     select: { id: true, sub: true, accessTokenEncrypted: true, expiresAt: true, displayName: true, profilePicture: true },
   })
 
-  if (!account) return NextResponse.json({ error: 'LinkedIn account not found or inactive' }, { status: 404 })
-  if (account.expiresAt < new Date()) return NextResponse.json({ error: 'LinkedIn token has expired. Please reconnect.' }, { status: 400 })
+  if (!account) {
+    // Revert to pending_approval so the post isn't stuck in an orphan 'approved' state
+    await prisma.post.update({ where: { id }, data: { status: 'pending_approval' } })
+    return NextResponse.json({ error: 'LinkedIn account not found or inactive' }, { status: 404 })
+  }
+  if (account.expiresAt < new Date()) {
+    await prisma.post.update({ where: { id }, data: { status: 'pending_approval' } })
+    return NextResponse.json({ error: 'LinkedIn token has expired. Please reconnect.' }, { status: 400 })
+  }
 
   // Generate or fetch image if user wants it:
   // Custom upload: fetch from Vercel Blob (no generation needed)

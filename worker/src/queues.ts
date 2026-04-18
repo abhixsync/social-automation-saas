@@ -28,7 +28,7 @@ export const postQueue = new Queue('linkedin-posts', {
 export function createWorker(processor: Processor) {
   return new Worker('linkedin-posts', processor, {
     connection: redis,
-    concurrency: 1,
+    concurrency: 5,
     stalledInterval: 300_000, // Check stalled jobs every 5 min (default: 30s → saves ~2,592 req/day)
     lockDuration: 120_000,    // 2 min lock duration
     lockRenewTime: 60_000,    // Renew lock every 1 min (default: 5s → saves ~2,016 req/day on active jobs)

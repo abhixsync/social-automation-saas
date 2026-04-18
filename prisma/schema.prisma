@@ -14,6 +14,7 @@ datasource db {
 enum Plan {
   free
   pro
+  on_hold
 }
 
 enum Currency {
@@ -112,8 +113,8 @@ model User {
   // Billing
   plan                   Plan     @default(free)
   currency               Currency @default(INR)
-  razorpayCustomerId     String?  @unique
-  razorpaySubscriptionId String?  @unique
+  dodoCustomerId         String?  @unique
+  dodoSubscriptionId     String?  @unique
   lifetimeFree           Boolean  @default(false)
 
   // AI Credits (word-based: 1 credit = 50 words generated)
@@ -133,7 +134,7 @@ model User {
   creditTopups     CreditTopup[]
   notifications    Notification[]
 
-  @@index([razorpayCustomerId])
+  @@index([dodoCustomerId])
   @@index([plan])
 }
 
@@ -234,6 +235,7 @@ model Post {
   linkedInAccount LinkedInAccount @relation(fields: [linkedInAccountId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
+  @@index([userId, status, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
   @@index([linkedInAccountId])
   @@index([scheduledFor])
@@ -244,14 +246,14 @@ model Post {
 // ─────────────────────────────────────────────
 
 model CreditTopup {
-  id                    String   @id @default(cuid())
-  userId                String
-  credits               Int
-  amount                Int      // smallest unit: paise or cents
-  currency              Currency
-  razorpayPaymentId     String?  @unique
-  razorpayOrderId       String?  @unique
-  createdAt             DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  credits       Int
+  amount        Int      // smallest unit: paise or cents
+  currency      Currency
+  dodoPaymentId String?  @unique
+  dodoSessionId String?  @unique
+  createdAt     DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

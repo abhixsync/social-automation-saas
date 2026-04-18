@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getRazorpay } from '@/lib/razorpay'
+import { cancelSubscription } from '@/lib/dodo/subscriptions'
+import { DodoApiError } from '@/lib/dodo/client'
 import { checkRateLimit } from '@/lib/ratelimit'
 
 export async function POST() {
@@ -18,20 +19,22 @@ export async function POST() {
   try {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, razorpaySubscriptionId: true },
+      select: { id: true, dodoSubscriptionId: true },
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    if (!user.razorpaySubscriptionId) {
+    if (!user.dodoSubscriptionId) {
       return NextResponse.json({ error: 'No active subscription' }, { status: 400 })
     }
 
-    // Cancel at period end — Razorpay fires subscription.cancelled webhook
-    // when the billing period expires, which handles the actual downgrade.
-    await getRazorpay().subscriptions.cancel(user.razorpaySubscriptionId, false)
+    // Cancel immediately — Dodo fires subscription.cancelled webhook which downgrades the plan
+    await cancelSubscription(user.dodoSubscriptionId, { immediately: true })
 
     return NextResponse.json({ ok: true })
   } catch (err) {
+    if (err instanceof DodoApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
     console.error('[billing/cancel]', err)
     return NextResponse.json({ error: 'Failed to cancel subscription' }, { status: 500 })
   }

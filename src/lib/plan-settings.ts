@@ -5,6 +5,7 @@ import type { Plan } from '@/types'
 export const PLAN_SETTING_KEYS: Record<Plan, string> = {
   free: 'free_credits_per_month',
   pro: 'pro_credits_per_month',
+  on_hold: 'pro_credits_per_month', // on_hold was a pro subscriber; credits stay at 0 (not reset)
 }
 
 /**
@@ -37,5 +38,6 @@ export async function getAllPlanCredits(): Promise<Record<Plan, number>> {
   return {
     free: map[PLAN_SETTING_KEYS.free] || PLAN_CONFIG.free.creditsPerMonth,
     pro: map[PLAN_SETTING_KEYS.pro] || PLAN_CONFIG.pro.creditsPerMonth,
+    on_hold: 0,
   }
 }
