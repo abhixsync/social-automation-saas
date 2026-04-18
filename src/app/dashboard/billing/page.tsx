@@ -129,7 +129,6 @@ export default async function BillingPage({
               </div>
             </div>
 
-            {!lifetimeFree && <BillingActions currentPlan={currentPlan} userName={userName} userEmail={userEmail} />}
           </CardContent>
         </Card>
 
