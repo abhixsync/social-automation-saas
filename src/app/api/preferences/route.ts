@@ -5,10 +5,10 @@ import { z } from 'zod'
 import { checkRateLimit } from '@/lib/ratelimit'
 
 const updateSchema = z.object({
-  niche: z.string().min(1).max(100).optional(),
+  niche: z.string().min(1).max(500).optional(),
   tone: z.enum(['professional', 'casual', 'thought_leader', 'storyteller', 'practitioner', 'contrarian', 'builder_in_public', 'educator', 'mentor']).optional(),
   contentPillars: z.array(z.string().min(1).max(100)).max(10).optional(),
-  customPromptSuffix: z.string().max(500).nullable().optional(),
+  customPromptSuffix: z.string().max(2000).nullable().optional(),
   approvalMode: z.boolean().optional(),
   timezone: z.string().min(1).max(100).optional(),
   imageStyle: z.enum(['quote_card', 'stats_card', 'topic_card', 'minimal_light', 'minimal_dark', 'list_card', 'stock_photo']).optional(),
