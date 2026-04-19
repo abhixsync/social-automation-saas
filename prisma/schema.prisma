@@ -27,6 +27,11 @@ enum Tone {
   casual
   thought_leader
   storyteller
+  practitioner
+  contrarian
+  builder_in_public
+  educator
+  mentor
 }
 
 enum PostStatus {

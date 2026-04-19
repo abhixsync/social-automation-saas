@@ -6,7 +6,7 @@ import { checkRateLimit } from '@/lib/ratelimit'
 
 const updateSchema = z.object({
   niche: z.string().min(1).max(100).optional(),
-  tone: z.enum(['professional', 'casual', 'thought_leader', 'storyteller']).optional(),
+  tone: z.enum(['professional', 'casual', 'thought_leader', 'storyteller', 'practitioner', 'contrarian', 'builder_in_public', 'educator', 'mentor']).optional(),
   contentPillars: z.array(z.string().min(1).max(100)).max(10).optional(),
   customPromptSuffix: z.string().max(500).nullable().optional(),
   approvalMode: z.boolean().optional(),

@@ -106,6 +106,11 @@ const TONES = [
   { value: 'casual', label: 'Casual' },
   { value: 'thought_leader', label: 'Thought Leader' },
   { value: 'storyteller', label: 'Storyteller' },
+  { value: 'practitioner', label: 'Practitioner' },
+  { value: 'contrarian', label: 'Contrarian' },
+  { value: 'builder_in_public', label: 'Builder in Public' },
+  { value: 'educator', label: 'Educator' },
+  { value: 'mentor', label: 'Mentor' },
 ]
 
 const TIMEZONES = [

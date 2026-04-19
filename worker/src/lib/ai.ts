@@ -49,6 +49,11 @@ function buildPrompt(
     casual: 'conversational and approachable',
     thought_leader: 'visionary and insightful, sharing bold opinions',
     storyteller: 'narrative-driven, using personal anecdotes',
+    practitioner: 'grounded in real-world experience, sharing practical lessons from actual hands-on work — no theory, just what actually happened',
+    contrarian: 'challenges conventional wisdom with bold, evidence-backed counterpoints — "everyone says X, but after years of experience I think Y"',
+    builder_in_public: 'transparent and vulnerable, sharing progress, failures, and learnings openly — celebrating wins and setbacks equally',
+    educator: 'breaks down complex concepts clearly and simply, teaching step by step so anyone can follow along',
+    mentor: 'speaks from experience to help junior professionals grow, warm and encouraging — "what I wish someone told me earlier"',
   }
   const toneDesc = toneMap[tone] ?? 'professional'
 
