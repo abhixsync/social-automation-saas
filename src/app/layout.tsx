@@ -28,6 +28,9 @@ export const metadata: Metadata = {
   authors: [{ name: "Crescova" }],
   creator: "Crescova",
   publisher: "Crescova",
+  alternates: {
+    canonical: APP_URL,
+  },
   robots: {
     index: true,
     follow: true,
