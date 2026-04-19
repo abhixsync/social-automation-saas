@@ -11,7 +11,7 @@ export const PrismaClient = jest.fn().mockImplementation(() => ({
   post: { findFirst: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
   linkedInAccount: { findFirst: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
   userPreferences: { findUnique: jest.fn(), upsert: jest.fn() },
-  webhookEvent: { findUnique: jest.fn(), create: jest.fn() },
+  webhookEvent: { findUnique: jest.fn(), create: jest.fn(), delete: jest.fn() },
   siteSetting: { findMany: jest.fn() },
   notification: { create: jest.fn() },
   creditTopup: { create: jest.fn() },

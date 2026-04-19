@@ -40,10 +40,16 @@ export async function POST(req: NextRequest) {
   const webhookId = webhookHeaders['webhook-id']
   const type = event.type as DodoWebhookEventType
 
-  // Idempotency: skip if already processed (Dodo retries on non-200)
-  const existing = await prisma.webhookEvent.findUnique({ where: { eventId: webhookId } })
-  if (existing) {
-    return NextResponse.json({ received: true })
+  // Idempotency: optimistic insert — if the event was already processed, the unique
+  // constraint fires immediately before any business logic runs, eliminating the
+  // check-then-act race that a find-then-create pattern has under concurrent retries.
+  try {
+    await prisma.webhookEvent.create({ data: { eventId: webhookId } })
+  } catch (e) {
+    if ((e as { code?: string }).code === 'P2002') {
+      return NextResponse.json({ received: true })
+    }
+    throw e
   }
 
   try {
@@ -112,10 +118,14 @@ export async function POST(req: NextRequest) {
         const data = event.data as DodoSubscriptionEventData
         const plan = productIdToPlan(data.product_id)
         if (plan) {
-          await prisma.user.updateMany({
+          const user = await prisma.user.findFirst({
             where: { dodoSubscriptionId: data.subscription_id },
-            data: { plan },
+            select: { id: true },
           })
+          if (user) {
+            await prisma.user.update({ where: { id: user.id }, data: { plan } })
+            await resetMonthlyCredits(user.id, plan)
+          }
         }
         break
       }
@@ -166,12 +176,10 @@ export async function POST(req: NextRequest) {
     }
   } catch (err) {
     console.error(`[dodo/webhook] Error handling ${type}:`, err)
-    // Return 500 so Dodo retries — don't mark as processed
+    // Delete the idempotency record so Dodo can retry this event
+    await prisma.webhookEvent.delete({ where: { eventId: webhookId } }).catch(() => {})
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
-
-  // Mark as processed only after successful handling
-  await prisma.webhookEvent.create({ data: { eventId: webhookId } }).catch(() => {})
 
   return NextResponse.json({ received: true })
 }

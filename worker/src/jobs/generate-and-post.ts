@@ -139,6 +139,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
     model = result.model
   } catch (err) {
     console.error(`[worker] AI generation failed:`, err)
+    await refundReservation()
     await prisma.post.create({
       data: {
         userId,
