@@ -108,13 +108,14 @@ export async function generatePostImage(opts: {
         </div>
       )
     } else {
-      // No stat found — render hook text on the stats_card gradient
+      // No stat found — render a bold headline card (visually distinct from quote_card)
       const hook = extractHook(content)
       jsx = (
-        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: `linear-gradient(135deg, ${from}, ${to})`, padding: '80px', fontFamily, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-          <div style={{ display: 'flex', fontSize: 18, color: 'rgba(255,255,255,0.6)', marginBottom: 32 }}>"</div>
-          <div style={{ display: 'flex', fontSize: hook.length > 80 ? 42 : 52, fontWeight: 600, color: 'white', textAlign: 'center', lineHeight: 1.3 }}>{hook}</div>
-          <div style={{ display: 'flex', marginTop: 48, fontSize: 22, color: 'rgba(255,255,255,0.7)' }}>- {displayName}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: `linear-gradient(135deg, ${from}, ${to})`, padding: '80px', fontFamily, justifyContent: 'flex-start', position: 'relative' }}>
+          <div style={{ display: 'flex', fontSize: 20, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: 6, marginBottom: 40 }}>{niche}</div>
+          <div style={{ display: 'flex', width: 80, height: 5, background: 'rgba(255,255,255,0.5)', borderRadius: 3, marginBottom: 48 }} />
+          <div style={{ display: 'flex', fontSize: hook.length > 80 ? 46 : 58, fontWeight: 800, color: 'white', lineHeight: 1.2 }}>{hook}</div>
+          <div style={{ display: 'flex', position: 'absolute', bottom: 80, left: 80, fontSize: 22, color: 'rgba(255,255,255,0.7)' }}>{displayName}</div>
           {showProfilePic && profilePictureUrl && <img src={profilePictureUrl} width={64} height={64} style={{ position: 'absolute', bottom: 32, left: 40, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.3)' }} />}
           {showWatermark && <div style={{ display: 'flex', position: 'absolute', bottom: 32, right: 40, fontSize: 18, color: wmColor }}>Crescova</div>}
         </div>
