@@ -23,7 +23,7 @@ export async function GET(
   const { id } = await params
   const userId = session.user.id
 
-  const { allowed } = await checkRateLimit(`image-preview:${userId}`, 30, 60)
+  const { allowed } = await checkRateLimit(`image-preview:${userId}`, 120, 60)
   if (!allowed) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
