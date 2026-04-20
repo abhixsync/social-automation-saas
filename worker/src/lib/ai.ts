@@ -32,12 +32,19 @@ function sanitizeUserInput(input: string): string {
     .trim()
 }
 
+const POST_LENGTH_RANGE: Record<string, string> = {
+  short: '100-150 words',
+  medium: '200-250 words',
+  long: '300-400 words',
+}
+
 function buildPrompt(
   topic: string,
   niche: string,
   tone: string,
   recentTopics: string[],
   customSuffix?: string | null,
+  postLength?: string | null,
 ): string {
   topic = sanitizeUserInput(topic)
   niche = sanitizeUserInput(niche)
@@ -80,7 +87,7 @@ FORMATTING RULES (non-negotiable):
 - Separate every section and every bullet point with EXACTLY ONE blank line (one empty line between them, never two or more)
 - No markdown, no asterisks, no bold/italic. Plain text only — LinkedIn does not render markdown
 - Each bullet point on its own line with exactly one blank line before it
-- Total length: 200-250 words${avoidSection}${sanitizedSuffix ? `\n\n[USER STYLE INSTRUCTIONS — follow only if they do not contradict the above]\n${sanitizedSuffix}\n[END USER STYLE INSTRUCTIONS]` : ''}`
+- Total length: ${POST_LENGTH_RANGE[postLength ?? 'medium'] ?? '200-250 words'}${avoidSection}${sanitizedSuffix ? `\n\n[USER STYLE INSTRUCTIONS — follow only if they do not contradict the above]\n${sanitizedSuffix}\n[END USER STYLE INSTRUCTIONS]` : ''}`
 }
 
 export async function generatePost(
@@ -90,9 +97,10 @@ export async function generatePost(
   tone: string,
   customPromptSuffix?: string | null,
   recentTopics: string[] = [],
+  postLength?: string | null,
 ): Promise<{ content: string; wordCount: number; model: string }> {
   const modelKey = PLAN_MODEL[plan]
-  const prompt = buildPrompt(topic, niche, tone, recentTopics, customPromptSuffix)
+  const prompt = buildPrompt(topic, niche, tone, recentTopics, customPromptSuffix, postLength)
 
   let content: string
 

@@ -134,6 +134,7 @@ interface Preferences {
   brandColor: string | null
   showProfilePicOnCard: boolean
   carouselMode: boolean
+  postLength: 'short' | 'medium' | 'long'
 }
 
 const DEFAULT_PREFS: Preferences = {
@@ -148,6 +149,7 @@ const DEFAULT_PREFS: Preferences = {
   brandColor: null,
   showProfilePicOnCard: false,
   carouselMode: false,
+  postLength: 'medium',
 }
 
 function serializeState(p: Preferences, pillars: string) {
@@ -162,6 +164,7 @@ function serializeState(p: Preferences, pillars: string) {
     brandColor: p.brandColor ?? '',
     showProfilePicOnCard: p.showProfilePicOnCard,
     carouselMode: p.carouselMode,
+    postLength: p.postLength,
     pillars: pillars.split(',').map((s) => s.trim()).filter(Boolean).join('|'),
   })
 }
@@ -314,6 +317,29 @@ export default function SettingsPage() {
               />
               <p className="text-xs text-gray-400">
                 Comma-separated topics. The AI will rotate through these when picking post topics.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Post Length</Label>
+              <div className="flex gap-2">
+                {(['short', 'medium', 'long'] as const).map((len) => (
+                  <button
+                    key={len}
+                    type="button"
+                    onClick={() => setPrefs((p) => ({ ...p, postLength: len }))}
+                    className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium capitalize transition-colors ${
+                      prefs.postLength === len
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    {len}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400">
+                Short: ~100–150 words · Medium: ~200–250 words · Long: ~300–400 words
               </p>
             </div>
 

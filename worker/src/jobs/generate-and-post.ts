@@ -60,6 +60,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         brandColor: true,
         showProfilePicOnCard: true,
         carouselMode: true,
+        postLength: true,
       },
     }),
     // Recent posts for topic uniqueness — fetched with a placeholder take;
@@ -133,6 +134,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
       tone,
       prefs?.customPromptSuffix,
       recentTopics,
+      prefs?.postLength,
     )
     content = result.content
     wordCount = result.wordCount

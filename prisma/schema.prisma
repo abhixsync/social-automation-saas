@@ -60,6 +60,12 @@ enum ImageStyle {
   ai_generated
 }
 
+enum PostLength {
+  short
+  medium
+  long
+}
+
 // ─────────────────────────────────────────────
 // NextAuth required models
 // ─────────────────────────────────────────────
@@ -185,6 +191,7 @@ model UserPreferences {
   brandColor            String?  // hex e.g. #4f46e5 — overrides gradient on cards
   showProfilePicOnCard  Boolean  @default(false)
   carouselMode          Boolean  @default(false)
+  postLength            PostLength @default(medium)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

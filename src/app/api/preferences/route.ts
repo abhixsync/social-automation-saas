@@ -16,6 +16,7 @@ const updateSchema = z.object({
   brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a hex color like #4f46e5').nullable().optional(),
   showProfilePicOnCard: z.boolean().optional(),
   carouselMode: z.boolean().optional(),
+  postLength: z.enum(['short', 'medium', 'long']).optional(),
 })
 
 export async function GET() {
@@ -67,6 +68,7 @@ export async function PUT(req: NextRequest) {
         brandColor: data.brandColor ?? null,
         showProfilePicOnCard: data.showProfilePicOnCard ?? false,
         carouselMode: data.carouselMode ?? false,
+        postLength: data.postLength ?? 'medium',
       },
     })
 
