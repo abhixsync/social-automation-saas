@@ -12,15 +12,6 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // 5 manual triggers per hour per user
-  const { allowed } = await checkRateLimit(`manual-generate:${session.user.id}`, 5, 3600)
-  if (!allowed) {
-    return NextResponse.json(
-      { error: 'Too many generation requests. Please wait before trying again.' },
-      { status: 429 },
-    )
-  }
-
   try {
     const body = await req.json()
     const { accountId } = schema.parse(body)
@@ -46,6 +37,17 @@ export async function POST(req: NextRequest) {
       where: { id: session.user.id },
       select: { aiCreditsUsed: true, aiCreditsTotal: true, lifetimeFree: true },
     })
+
+    // 5 manual triggers per hour — lifetime free users are exempt (no credit constraints)
+    if (!user?.lifetimeFree) {
+      const { allowed } = await checkRateLimit(`manual-generate:${session.user.id}`, 5, 3600)
+      if (!allowed) {
+        return NextResponse.json(
+          { error: 'Too many generation requests. Please wait before trying again.' },
+          { status: 429 },
+        )
+      }
+    }
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
     if (!user.lifetimeFree) {
       const reservation = await prisma.user.updateMany({
