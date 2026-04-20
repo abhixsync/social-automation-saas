@@ -24,8 +24,8 @@ const GROQ_MODELS: Record<string, string> = {
 
 const POST_LENGTH_RANGE: Record<string, string> = {
   short: '100-150 words',
-  medium: '200-250 words',
-  long: '300-400 words',
+  medium: '200-300 words',
+  long: '400-500 words',
 }
 
 function buildPrompt(

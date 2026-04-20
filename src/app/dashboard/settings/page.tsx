@@ -339,7 +339,7 @@ export default function SettingsPage() {
                 ))}
               </div>
               <p className="text-xs text-gray-400">
-                Short: ~100–150 words · Medium: ~200–250 words · Long: ~300–400 words
+                Short: ~100–150 words · Medium: ~200–300 words · Long: ~400–500 words
               </p>
             </div>
 
