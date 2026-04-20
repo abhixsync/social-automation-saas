@@ -30,7 +30,7 @@ export async function GET(
 
   const [post, user, prefs] = await Promise.all([
     prisma.post.findFirst({
-      where: { id, userId, status: 'pending_approval' },
+      where: { id, userId, status: { in: ['pending_approval', 'published'] } },
       select: { generatedContent: true, topic: true, imageStyle: true, linkedInAccountId: true, customImageUrl: true },
     }),
     prisma.user.findUnique({

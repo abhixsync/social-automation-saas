@@ -102,38 +102,40 @@ export async function POST(
       }
     } else if ((prefs?.imageStyle ?? 'quote_card') === 'stock_photo') {
       // Stock photo from Pexels
-      const remaining = user.aiCreditsTotal - user.aiCreditsUsed
-      if (remaining >= IMAGE_CREDITS) {
-        const creditResult: number = await prisma.$executeRaw`
+      const canAffordImage = user.lifetimeFree || (user.aiCreditsTotal - user.aiCreditsUsed) >= IMAGE_CREDITS
+      if (canAffordImage) {
+        const creditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
           UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${IMAGE_CREDITS}
           WHERE id = ${userId} AND "aiCreditsUsed" + ${IMAGE_CREDITS} <= "aiCreditsTotal"
         `
         if (creditResult > 0) {
-          imageCreditsCost = IMAGE_CREDITS
+          imageCreditsCost = user.lifetimeFree ? 0 : IMAGE_CREDITS
           const stockBuffer = await fetchStockPhoto(post.topic, prefs?.niche ?? 'tech professional')
           if (stockBuffer) {
             imageBuffer = stockBuffer
           } else {
             // Pexels failed — refund and fall back to text-only
-            await prisma.user.updateMany({
-              where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
-              data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
-            })
+            if (!user.lifetimeFree) {
+              await prisma.user.updateMany({
+                where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
+                data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
+              })
+            }
             imageCreditsCost = 0
           }
         }
       }
     } else {
       // Generate card image
-      const remaining = user.aiCreditsTotal - user.aiCreditsUsed
-      if (remaining >= IMAGE_CREDITS) {
-        const creditResult: number = await prisma.$executeRaw`
+      const canAffordImage = user.lifetimeFree || (user.aiCreditsTotal - user.aiCreditsUsed) >= IMAGE_CREDITS
+      if (canAffordImage) {
+        const creditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
           UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${IMAGE_CREDITS}
           WHERE id = ${userId} AND "aiCreditsUsed" + ${IMAGE_CREDITS} <= "aiCreditsTotal"
         `
 
         if (creditResult > 0) {
-          imageCreditsCost = IMAGE_CREDITS
+          imageCreditsCost = user.lifetimeFree ? 0 : IMAGE_CREDITS
           try {
             imageBuffer = await generatePostImage({
               style: (prefs?.imageStyle ?? 'quote_card') as ImageStyle,
@@ -148,10 +150,12 @@ export async function POST(
             })
           } catch (imgErr) {
             console.warn('[posts/approve] Image generation failed, refunding credits and posting text-only:', imgErr)
-            await prisma.user.updateMany({
-              where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
-              data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
-            })
+            if (!user.lifetimeFree) {
+              await prisma.user.updateMany({
+                where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
+                data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
+              })
+            }
             imageCreditsCost = 0
             imageBuffer = null
           }
