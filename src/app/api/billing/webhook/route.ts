@@ -98,19 +98,37 @@ export async function POST(req: NextRequest) {
 
       case 'subscription.on_hold': {
         const data = event.data as DodoSubscriptionEventData
-        await prisma.user.updateMany({
+        const onHoldUser = await prisma.user.findFirst({
           where: { dodoSubscriptionId: data.subscription_id },
+          select: { id: true },
+        })
+        if (!onHoldUser) break
+        await prisma.user.update({
+          where: { id: onHoldUser.id },
           data: { plan: 'on_hold' },
+        })
+        await prisma.notification.create({
+          data: {
+            userId: onHoldUser.id,
+            message: 'Your payment failed. Please update your payment method to continue using pro features.',
+          },
         })
         break
       }
 
       case 'subscription.cancelled': {
         const data = event.data as DodoSubscriptionEventData
-        await prisma.user.updateMany({
+        const cancelledUser = await prisma.user.findFirst({
           where: { dodoSubscriptionId: data.subscription_id },
+          select: { id: true },
+        })
+        if (!cancelledUser) break
+        await prisma.user.update({
+          where: { id: cancelledUser.id },
           data: { plan: 'free', dodoSubscriptionId: null },
         })
+        // Reset credits to free-tier allocation — prevents cancelled users retaining pro credits
+        await resetMonthlyCredits(cancelledUser.id, 'free')
         break
       }
 

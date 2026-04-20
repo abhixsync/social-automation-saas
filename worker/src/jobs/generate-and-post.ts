@@ -170,7 +170,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${creditsUsed}
         WHERE id = ${userId} AND "aiCreditsUsed" + ${creditsUsed} <= "aiCreditsTotal"
       `
-      if (result === 0) return // credits exhausted by a concurrent job
+      if (result === 0) { await refundReservation(); return } // credits exhausted by a concurrent job
       creditsDeducted = true
       await tx.post.create({
         data: {
@@ -269,8 +269,8 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
 
   // 9. Post to LinkedIn (carousel or standard)
   let useCarousel = prefs?.carouselMode ?? false
+  let carouselCost = 0
   try {
-    let carouselCost = 0
     if (useCarousel) {
       // Atomically deduct carousel credits BEFORE generation (use live DB columns, not stale JS snapshot)
       const carouselCreditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
@@ -295,10 +295,12 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
           await postCarouselToLinkedIn(account.accessTokenEncrypted, account.sub, content, pdfBuffer)
         } catch (carouselErr) {
           console.warn(`[worker] Carousel generation/upload failed, refunding and falling back:`, carouselErr)
-          await prisma.user.updateMany({
-            where: { id: userId, aiCreditsUsed: { gte: CAROUSEL_CREDITS } },
-            data: { aiCreditsUsed: { decrement: CAROUSEL_CREDITS } },
-          })
+          if (!user.lifetimeFree) {
+            await prisma.user.updateMany({
+              where: { id: userId, aiCreditsUsed: { gte: CAROUSEL_CREDITS } },
+              data: { aiCreditsUsed: { decrement: CAROUSEL_CREDITS } },
+            })
+          }
           carouselCost = 0
           useCarousel = false
         }
@@ -317,7 +319,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         topic,
         generatedContent: content,
         wordCount,
-        creditsUsed: totalCredits + carouselCost,
+        creditsUsed: user.lifetimeFree ? 0 : totalCredits + carouselCost,
         status: 'published',
         aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
         includeImage: imageBuffer !== null,
@@ -331,10 +333,13 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   } catch (err) {
     console.error(`[worker] LinkedIn post failed:`, err)
     // Refund credits (best effort — failure here means user loses credits for a post that didn't go live)
-    await prisma.user.updateMany({
-      where: { id: userId, aiCreditsUsed: { gte: totalCredits } },
-      data: { aiCreditsUsed: { decrement: totalCredits } },
-    }).catch((refundErr) => console.error('[worker] Credit refund failed:', refundErr))
+    // Include carouselCost since it's now hoisted and accessible here
+    if (!user.lifetimeFree) {
+      await prisma.user.updateMany({
+        where: { id: userId, aiCreditsUsed: { gte: totalCredits + carouselCost } },
+        data: { aiCreditsUsed: { decrement: totalCredits + carouselCost } },
+      }).catch((refundErr) => console.error('[worker] Credit refund failed:', refundErr))
+    }
 
     await prisma.post.create({
       data: {

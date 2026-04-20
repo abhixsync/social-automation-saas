@@ -84,16 +84,16 @@ export async function POST(
         const imgRes = await fetch(post.customImageUrl)
         if (imgRes.ok) {
           imageBuffer = Buffer.from(await imgRes.arrayBuffer())
-          imageCreditsCost = IMAGE_CREDITS
-          // Deduct credits for the LinkedIn upload
           // Atomic: check current DB credits (not stale JS snapshot) to prevent double-spend
-          const creditResult: number = await prisma.$executeRaw`
+          // lifetimeFree users bypass credit deduction (mirrors carousel + card generation paths)
+          const creditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
             UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${IMAGE_CREDITS}
             WHERE id = ${userId} AND "aiCreditsUsed" + ${IMAGE_CREDITS} <= "aiCreditsTotal"
           `
           if (creditResult === 0) {
             imageBuffer = null
-            imageCreditsCost = 0
+          } else {
+            imageCreditsCost = user.lifetimeFree ? 0 : IMAGE_CREDITS
           }
         }
       } catch (err) {

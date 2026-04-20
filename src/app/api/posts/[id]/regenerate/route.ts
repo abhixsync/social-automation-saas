@@ -37,7 +37,7 @@ export async function POST(
   // Load user + prefs
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { plan: true, aiCreditsTotal: true, aiCreditsUsed: true },
+    select: { plan: true, aiCreditsTotal: true, aiCreditsUsed: true, lifetimeFree: true },
   })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
@@ -50,8 +50,8 @@ export async function POST(
   const tone = prefs?.tone ?? 'professional'
   const customPromptSuffix = prefs?.customPromptSuffix ?? null
 
-  // Early exit if clearly out of credits (non-atomic fast path)
-  if (user.aiCreditsTotal - user.aiCreditsUsed <= 0) {
+  // Early exit if clearly out of credits (non-atomic fast path — lifetimeFree users bypass)
+  if (!user.lifetimeFree && user.aiCreditsTotal - user.aiCreditsUsed <= 0) {
     return NextResponse.json(
       { error: 'Insufficient credits. Please upgrade your plan or purchase a top-up.' },
       { status: 402 },
@@ -59,9 +59,11 @@ export async function POST(
   }
 
   try {
+    // lifetimeFree users always get the pro model
+    const effectivePlan = (user.lifetimeFree ? 'pro' : user.plan) as Plan
     const { content, wordCount, model } = await generatePost(
       post.topic,
-      user.plan as Plan,
+      effectivePlan,
       niche,
       tone,
       customPromptSuffix,
@@ -72,24 +74,24 @@ export async function POST(
     const netCost = creditsUsed - post.creditsUsed
 
     const updated = await prisma.$transaction(async (tx) => {
-      // Atomic check + deduct: only proceed if user still has enough credits
-      if (netCost > 0) {
-        const result = await tx.user.updateMany({
-          where: {
-            id: session.user.id,
-            aiCreditsUsed: { lte: user.aiCreditsTotal - netCost },
-          },
-          data: { aiCreditsUsed: { increment: netCost } },
-        })
-        if (result.count === 0) {
-          throw Object.assign(new Error('Insufficient credits'), { code: 'INSUFFICIENT_CREDITS' })
+      // lifetimeFree users bypass all credit accounting
+      if (!user.lifetimeFree) {
+        if (netCost > 0) {
+          // Atomic check + deduct using live DB columns (not stale JS snapshot)
+          const result: number = await tx.$executeRaw`
+            UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${netCost}
+            WHERE id = ${session.user.id} AND "aiCreditsUsed" + ${netCost} <= "aiCreditsTotal"
+          `
+          if (result === 0) {
+            throw Object.assign(new Error('Insufficient credits'), { code: 'INSUFFICIENT_CREDITS' })
+          }
+        } else if (netCost < 0) {
+          // Net refund — always safe to apply
+          await tx.user.update({
+            where: { id: session.user.id },
+            data: { aiCreditsUsed: { increment: netCost } },
+          })
         }
-      } else {
-        // Net refund — always safe to apply
-        await tx.user.update({
-          where: { id: session.user.id },
-          data: { aiCreditsUsed: { increment: netCost } },
-        })
       }
 
       return tx.post.update({
