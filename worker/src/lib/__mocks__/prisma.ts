@@ -30,7 +30,7 @@ export const prisma = {
     updateMany: jest.fn(),
   },
   userPreferences: { findUnique: jest.fn(), upsert: jest.fn() },
-  webhookEvent: { findUnique: jest.fn(), create: jest.fn() },
+  webhookEvent: { findUnique: jest.fn(), create: jest.fn(), delete: jest.fn() },
   siteSetting: { findMany: jest.fn() },
   notification: { create: jest.fn() },
   creditTopup: { create: jest.fn() },
