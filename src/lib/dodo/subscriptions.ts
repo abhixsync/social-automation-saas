@@ -6,6 +6,7 @@ export interface DodoSubscription {
   status: 'active' | 'cancelled' | 'on_hold' | 'paused' | 'expired'
   product_id: string
   current_period_end: string
+  metadata?: Record<string, string>
 }
 
 /**
