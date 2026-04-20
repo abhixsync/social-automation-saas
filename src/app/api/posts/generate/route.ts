@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     // The worker will deduct the real cost and refund the 1-credit reservation.
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { aiCreditsUsed: true, aiCreditsTotal: true, lifetimeFree: true },
+      select: { aiCreditsUsed: true, aiCreditsTotal: true, lifetimeFree: true, plan: true },
     })
 
     // 5 manual triggers per hour — lifetime free users are exempt (no credit constraints)
@@ -49,6 +49,12 @@ export async function POST(req: NextRequest) {
       }
     }
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!user.lifetimeFree && user.plan === 'on_hold') {
+      return NextResponse.json(
+        { error: 'Your payment is on hold. Please update your payment method to continue.' },
+        { status: 402 },
+      )
+    }
     if (!user.lifetimeFree) {
       const reservation = await prisma.user.updateMany({
         where: { id: session.user.id, aiCreditsUsed: { lt: user.aiCreditsTotal } },

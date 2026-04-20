@@ -104,6 +104,11 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
 
   // 3. Check credits (lifetimeFree users bypass all credit limits)
   if (!user.lifetimeFree) {
+    if (user.plan === 'on_hold') {
+      console.log(`[worker] User ${userId} has payment on hold — skipping post generation`)
+      await refundReservation()
+      return
+    }
     const remaining = user.aiCreditsTotal - user.aiCreditsUsed
     if (remaining <= 0) {
       console.log(`[worker] User ${userId} has no credits remaining`)

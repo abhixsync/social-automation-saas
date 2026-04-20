@@ -49,20 +49,17 @@ export async function deductCredits(
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { lifetimeFree: true, aiCreditsTotal: true },
+    select: { lifetimeFree: true },
   })
 
   if (user?.lifetimeFree) return 0
 
-  // Atomic guard: only deduct if user has enough credits
-  const result = await prisma.user.updateMany({
-    where: {
-      id: userId,
-      aiCreditsUsed: { lte: (user?.aiCreditsTotal ?? 0) - credits },
-    },
-    data: { aiCreditsUsed: { increment: credits } },
-  })
-  if (result.count === 0) {
+  // Atomic guard using live DB columns — avoids TOCTOU from stale aiCreditsTotal snapshot
+  const result: number = await prisma.$executeRaw`
+    UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${credits}
+    WHERE id = ${userId} AND "aiCreditsUsed" + ${credits} <= "aiCreditsTotal"
+  `
+  if (result === 0) {
     throw new Error('Insufficient credits')
   }
 
