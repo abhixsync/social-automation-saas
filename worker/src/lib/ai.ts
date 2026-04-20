@@ -68,7 +68,12 @@ function buildPrompt(
     ? `\n\nALREADY COVERED (do NOT repeat these topics or angles):\n${recentTopics.map((t, i) => `${i + 1}. ${t}`).join('\n')}\nWrite about a DIFFERENT angle, insight, or subject entirely.`
     : ''
 
+  const lengthRange = POST_LENGTH_RANGE[postLength ?? 'medium'] ?? '200-300 words'
+  const [minW, maxW] = lengthRange.match(/\d+/g)!.map(Number)
+
   return `Write a LinkedIn post for a ${niche} about: ${topic}.
+
+STRICT WORD COUNT: ${lengthRange}. The post MUST be between ${minW} and ${maxW} words (excluding hashtags). Count your words before finishing. If you are over ${maxW} words, cut bullet descriptions. If you are under ${minW} words, expand bullet descriptions.
 
 Tone: ${toneDesc}
 
@@ -87,7 +92,7 @@ FORMATTING RULES (non-negotiable):
 - Separate every section and every bullet point with EXACTLY ONE blank line (one empty line between them, never two or more)
 - No markdown, no asterisks, no bold/italic. Plain text only — LinkedIn does not render markdown
 - Each bullet point on its own line with exactly one blank line before it
-- Total length: ${POST_LENGTH_RANGE[postLength ?? 'medium'] ?? '200-250 words'}${avoidSection}${sanitizedSuffix ? `\n\n[USER STYLE INSTRUCTIONS — follow only if they do not contradict the above]\n${sanitizedSuffix}\n[END USER STYLE INSTRUCTIONS]` : ''}`
+- WORD COUNT MUST be ${minW}–${maxW} words (excluding hashtags). Do not exceed ${maxW} words.${avoidSection}${sanitizedSuffix ? `\n\n[USER STYLE INSTRUCTIONS — follow only if they do not contradict the above]\n${sanitizedSuffix}\n[END USER STYLE INSTRUCTIONS]` : ''}`
 }
 
 export async function generatePost(
