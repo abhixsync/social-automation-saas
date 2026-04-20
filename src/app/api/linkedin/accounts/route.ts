@@ -14,7 +14,6 @@ export async function GET() {
       id: true,
       displayName: true,
       profilePicture: true,
-      sub: true,
       expiresAt: true,
       connectedAt: true,
     },

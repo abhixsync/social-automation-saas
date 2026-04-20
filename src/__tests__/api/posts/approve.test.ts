@@ -101,7 +101,7 @@ function makeParams(id = 'post_1') {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  jest.resetAllMocks() // reset implementations so mockRejectedValue from one test doesn't bleed into next
   mockAuth.mockResolvedValue({ user: { id: 'user_1' } })
   mockRateLimit.mockResolvedValue({ allowed: true })
   ;(mockPrisma.post.findFirst as jest.Mock).mockResolvedValue(basePost)
@@ -112,6 +112,14 @@ beforeEach(() => {
   ;(mockPrisma.linkedInAccount.findFirst as jest.Mock).mockResolvedValue(baseAccount)
   ;(mockPrisma.$executeRaw as jest.Mock).mockResolvedValue(1)
   ;(mockPrisma.user.updateMany as jest.Mock).mockResolvedValue({ count: 1 })
+  // Reset linkedin/image/carousel mocks so rejection from one test doesn't bleed into the next
+  const { postToLinkedIn: _ptl, postToLinkedInWithImage: _ptwi, postCarouselToLinkedIn: _ptcli } = jest.requireMock('@/lib/linkedin')
+  ;(_ptl as jest.Mock).mockResolvedValue(undefined)
+  ;(_ptwi as jest.Mock).mockResolvedValue(undefined)
+  ;(_ptcli as jest.Mock).mockResolvedValue(undefined)
+  ;(jest.requireMock('@/lib/image-gen').generatePostImage as jest.Mock).mockResolvedValue(Buffer.from('img'))
+  ;(jest.requireMock('@/lib/carousel-gen').generateCarouselSlides as jest.Mock).mockResolvedValue([Buffer.from('slide1')])
+  ;(jest.requireMock('@/lib/pdf').pngsToPdf as jest.Mock).mockResolvedValue(Buffer.from('pdf'))
 })
 
 // ── Auth & guards ─────────────────────────────────────────────────────────────

@@ -2,17 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit } from '@/lib/ratelimit'
+import { isAdmin } from '@/lib/admin'
 
 const ALLOWED_KEYS = ['free_credits_per_month', 'pro_credits_per_month', 'app_mode']
-
-function isAdmin(email: string | null | undefined): boolean {
-  if (!email) return false
-  return (process.env.ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-    .includes(email.toLowerCase())
-}
 
 export async function POST(req: NextRequest) {
   const session = await auth()

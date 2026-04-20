@@ -28,6 +28,15 @@ const POST_LENGTH_RANGE: Record<string, string> = {
   long: '400-500 words',
 }
 
+function sanitizeUserInput(input: string): string {
+  return input
+    .replace(/\[END\s+USER\s+STYLE\s+INSTRUCTIONS?\]/gi, '')
+    .replace(/ignore\s+(all\s+)?(above|previous|prior|preceding)/gi, '')
+    .replace(/\bsystem\s*:/gi, '')
+    .slice(0, 500)
+    .trim()
+}
+
 function buildPrompt(
   topic: string,
   niche: string,
@@ -35,6 +44,9 @@ function buildPrompt(
   customSuffix?: string | null,
   postLength?: string | null,
 ): string {
+  topic = sanitizeUserInput(topic)
+  niche = sanitizeUserInput(niche)
+  tone = sanitizeUserInput(tone)
   const toneMap: Record<string, string> = {
     professional: 'professional and authoritative',
     casual: 'conversational and approachable',

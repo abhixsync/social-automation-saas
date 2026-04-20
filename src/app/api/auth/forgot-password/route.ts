@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email } })
 
     if (user) {
-      // TODO: send actual reset email via nodemailer/resend
-      console.log('[forgot-password] Reset requested for:', email)
+      // TODO: send actual reset email via resend
+      console.log('[forgot-password] Reset requested for user')
     }
 
     return NextResponse.json(RESPONSE)

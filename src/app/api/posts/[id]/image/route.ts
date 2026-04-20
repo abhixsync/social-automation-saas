@@ -91,7 +91,7 @@ export async function GET(
     console.error('[image] AUTH_SECRET is not configured')
     return new Response('Server configuration error', { status: 500 })
   }
-  const sig = createHash('sha256').update(d + secret).digest('hex').slice(0, 16)
+  const sig = createHash('sha256').update(d + secret).digest('hex').slice(0, 32)
   const edgeUrl = new URL(`/api/image-render?d=${d}&sig=${sig}`, req.url)
   return NextResponse.redirect(edgeUrl)
 }

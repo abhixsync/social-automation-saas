@@ -2,15 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit } from '@/lib/ratelimit'
-
-function isAdmin(email: string | null | undefined): boolean {
-  if (!email) return false
-  const adminEmails = (process.env.ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-  return adminEmails.includes(email.toLowerCase())
-}
+import { isAdmin } from '@/lib/admin'
 
 export async function POST(
   _req: NextRequest,

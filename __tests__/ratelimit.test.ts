@@ -117,9 +117,9 @@ describe('checkRateLimit', () => {
 // ─── getClientIp ──────────────────────────────────────────────────────────────
 
 describe('getClientIp', () => {
-  it('extracts the first IP from x-forwarded-for when multiple IPs are present', () => {
+  it('extracts the last IP from x-forwarded-for when multiple IPs are present (trusted proxy entry)', () => {
     const req = { headers: { get: (name: string) => name === 'x-forwarded-for' ? '1.2.3.4, 5.6.7.8' : null } }
-    expect(getClientIp(req)).toBe('1.2.3.4')
+    expect(getClientIp(req)).toBe('5.6.7.8')
   })
 
   it('returns the IP directly when x-forwarded-for has a single value', () => {
@@ -132,8 +132,8 @@ describe('getClientIp', () => {
     expect(getClientIp(req)).toBe('unknown')
   })
 
-  it('trims whitespace from the extracted IP', () => {
+  it('trims whitespace from the extracted last IP', () => {
     const req = { headers: { get: (name: string) => name === 'x-forwarded-for' ? '  10.0.0.1 , 192.168.1.1' : null } }
-    expect(getClientIp(req)).toBe('10.0.0.1')
+    expect(getClientIp(req)).toBe('192.168.1.1')
   })
 })

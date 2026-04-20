@@ -1,20 +1,18 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-
-function isAdmin(email: string | null | undefined): boolean {
-  if (!email) return false
-  return (process.env.ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-    .includes(email.toLowerCase())
-}
+import { checkRateLimit } from '@/lib/ratelimit'
+import { isAdmin } from '@/lib/admin'
 
 export async function GET() {
   const session = await auth()
   if (!isAdmin(session?.user?.email)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { allowed } = await checkRateLimit(`admin-settings-current:${session?.user?.id}`, 30, 60)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
   const rows = await prisma.siteSetting.findMany({

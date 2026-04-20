@@ -33,7 +33,8 @@ export async function POST() {
     return NextResponse.json({ ok: true })
   } catch (err) {
     if (err instanceof DodoApiError) {
-      return NextResponse.json({ error: err.message }, { status: err.status })
+      console.error('[billing/cancel] Dodo error:', err.message, err.status)
+      return NextResponse.json({ error: 'Payment service error. Please try again.' }, { status: 502 })
     }
     console.error('[billing/cancel]', err)
     return NextResponse.json({ error: 'Failed to cancel subscription' }, { status: 500 })

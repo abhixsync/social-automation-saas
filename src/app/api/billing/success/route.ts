@@ -24,6 +24,12 @@ export async function GET(req: NextRequest) {
     const subscription = await getSubscription(subscriptionId)
 
     if (subscription.status === 'active') {
+      // Verify this subscription belongs to the requesting user via metadata
+      const metaUserId = subscription.metadata?.user_id
+      if (metaUserId && metaUserId !== session.user.id) {
+        console.warn('[billing/success] subscription user_id mismatch', { metaUserId, sessionUserId: session.user.id })
+        return NextResponse.redirect(new URL('/dashboard/billing', req.url))
+      }
       await prisma.user.update({
         where: { id: session.user.id },
         data: {

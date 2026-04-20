@@ -41,9 +41,9 @@ jest.mock('../src/lib/prisma', () => ({
   },
 }))
 
-// Mock verifyDodoWebhook to always succeed — we're testing handler logic, not crypto
+// Mock verifyDodoWebhook as jest.fn so individual tests can override for failure scenarios
 jest.mock('../src/lib/dodo/webhooks', () => ({
-  verifyDodoWebhook: (_body: string) => JSON.parse(_body),
+  verifyDodoWebhook: jest.fn((_body: string) => JSON.parse(_body)),
 }))
 
 jest.mock('../src/lib/credits', () => ({
@@ -97,7 +97,9 @@ describe('webhook handler — idempotency', () => {
   })
 
   it('returns 200 and skips processing when the event was already recorded', async () => {
-    mockFindUnique.mockResolvedValue({ id: 'existing', eventId: WEBHOOK_ID })
+    // Simulate optimistic-insert idempotency: create throws P2002 (unique constraint) on duplicate
+    const p2002 = Object.assign(new Error('Unique constraint failed'), { code: 'P2002' })
+    mockWebhookEventCreate.mockRejectedValueOnce(p2002)
 
     const { POST } = await import('../src/app/api/billing/webhook/route')
     const req = makeRequest(subscriptionActivePayload())
@@ -130,6 +132,9 @@ describe('webhook handler — idempotency', () => {
   })
 
   it('returns 400 when Standard Webhooks headers are missing', async () => {
+    const { verifyDodoWebhook } = jest.requireMock('../src/lib/dodo/webhooks')
+    ;(verifyDodoWebhook as jest.Mock).mockImplementationOnce(() => { throw new Error('Missing webhook-id header') })
+
     const req = new NextRequest('http://localhost/api/billing/webhook', {
       method: 'POST',
       body: JSON.stringify(subscriptionActivePayload()),
@@ -159,12 +164,11 @@ describe('webhook handler — idempotency', () => {
   })
 
   it('uses webhook-id as idempotency key (not composite)', async () => {
-    mockFindUnique.mockResolvedValue(null)
-
     const { POST } = await import('../src/app/api/billing/webhook/route')
     const req = makeRequest(subscriptionActivePayload())
     await POST(req)
 
-    expect(mockFindUnique).toHaveBeenCalledWith({ where: { eventId: WEBHOOK_ID } })
+    // Route uses optimistic insert: create with eventId as the unique key
+    expect(mockWebhookEventCreate).toHaveBeenCalledWith({ data: { eventId: WEBHOOK_ID } })
   })
 })

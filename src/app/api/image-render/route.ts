@@ -19,7 +19,7 @@ async function computeSig(data: string): Promise<string | null> {
   if (!secret) return null
   const msgBuf = new TextEncoder().encode(data + secret)
   const hashBuf = await crypto.subtle.digest('SHA-256', msgBuf)
-  return Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16)
+  return Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 32)
 }
 
 export async function GET(req: Request) {

@@ -65,7 +65,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ checkoutUrl: checkoutSession.checkout_url })
   } catch (err) {
     if (err instanceof DodoApiError) {
-      return NextResponse.json({ error: err.message }, { status: err.status })
+      console.error('[billing/checkout] Dodo error:', err.message, err.status)
+      return NextResponse.json({ error: 'Payment service error. Please try again.' }, { status: 502 })
     }
     console.error('[billing/checkout]', err)
     return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 })

@@ -26,7 +26,18 @@ export async function checkRateLimit(
   }
 }
 
-/** Extract caller IP from Next.js request headers. */
+/** Extract caller IP from Next.js request headers.
+ * On Vercel, x-real-ip is set by the edge and cannot be spoofed by the client.
+ * Falls back to the last entry in x-forwarded-for (the closest trusted proxy).
+ */
 export function getClientIp(req: { headers: { get(name: string): string | null } }): string {
-  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const realIp = req.headers.get('x-real-ip')
+  if (realIp) return realIp.trim()
+  const forwarded = req.headers.get('x-forwarded-for')
+  if (forwarded) {
+    // Take the last IP — added by the trusted reverse proxy, not client-spoofable
+    const parts = forwarded.split(',')
+    return parts[parts.length - 1].trim()
+  }
+  return 'unknown'
 }
