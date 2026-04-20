@@ -110,12 +110,14 @@ export async function generatePost(
   let content: string
 
   const AI_TIMEOUT = 60_000 // 60 s — prevents the single-concurrency worker from stalling indefinitely
+  // Long posts (~500 words) need ~800 tokens output; 2048 gives headroom for all length settings
+  const MAX_TOKENS = 2048
 
   if (modelKey === 'claude_sonnet') {
     try {
       const response = await anthropicClient().messages.create({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
+        max_tokens: MAX_TOKENS,
         messages: [{ role: 'user', content: prompt }],
       }, { signal: AbortSignal.timeout(AI_TIMEOUT) })
       const block = response.content[0]
@@ -124,7 +126,7 @@ export async function generatePost(
       console.warn('[ai] Anthropic unavailable, falling back to llama-3.3-70b:', err)
       const response = await groqClient().chat.completions.create({
         model: GROQ_MODELS.llama_3_3_70b,
-        max_tokens: 1024,
+        max_tokens: MAX_TOKENS,
         messages: [{ role: 'user', content: prompt }],
       }, { signal: AbortSignal.timeout(AI_TIMEOUT) })
       content = response.choices[0]?.message?.content ?? ''
@@ -134,7 +136,7 @@ export async function generatePost(
     try {
       const response = await groqClient().chat.completions.create({
         model: groqModel,
-        max_tokens: 1024,
+        max_tokens: MAX_TOKENS,
         messages: [{ role: 'user', content: prompt }],
       }, { signal: AbortSignal.timeout(AI_TIMEOUT) })
       content = response.choices[0]?.message?.content ?? ''
@@ -142,7 +144,7 @@ export async function generatePost(
       console.warn('[ai] Groq unavailable, falling back to Anthropic:', err)
       const response = await anthropicClient().messages.create({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
+        max_tokens: MAX_TOKENS,
         messages: [{ role: 'user', content: prompt }],
       }, { signal: AbortSignal.timeout(AI_TIMEOUT) })
       const block = response.content[0]

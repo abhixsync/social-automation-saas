@@ -107,7 +107,7 @@ export async function generatePost(
     // Pro plan — Claude Sonnet 4.6
     const response = await anthropicClient().messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [{ role: 'user', content: prompt }],
     })
     const block = response.content[0]
@@ -117,7 +117,7 @@ export async function generatePost(
     const groqModel = GROQ_MODELS[modelKey] ?? GROQ_MODELS.llama_3_3_70b
     const response = await groqClient().chat.completions.create({
       model: groqModel,
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [{ role: 'user', content: prompt }],
     })
     content = response.choices[0]?.message?.content ?? ''
