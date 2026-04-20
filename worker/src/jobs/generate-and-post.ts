@@ -164,8 +164,9 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   if (prefs?.approvalMode) {
     let creditsDeducted = false
     await prisma.$transaction(async (tx) => {
-      // Atomic: check current DB credits (not stale JS snapshot) to prevent double-spend
-      const result: number = await tx.$executeRaw`
+      // Atomic: check current DB credits (not stale JS snapshot) to prevent double-spend.
+      // lifetimeFree users bypass the credit check entirely — their aiCreditsTotal is finite in DB.
+      const result: number = user.lifetimeFree ? 1 : await tx.$executeRaw`
         UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${creditsUsed}
         WHERE id = ${userId} AND "aiCreditsUsed" + ${creditsUsed} <= "aiCreditsTotal"
       `
