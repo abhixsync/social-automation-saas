@@ -109,8 +109,12 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
       await refundReservation()
       return
     }
-    const remaining = user.aiCreditsTotal - user.aiCreditsUsed
-    if (remaining <= 0) {
+    // Live DB read to narrow TOCTOU window before expensive AI call
+    const liveCredits = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { aiCreditsTotal: true, aiCreditsUsed: true },
+    })
+    if (!liveCredits || liveCredits.aiCreditsTotal - liveCredits.aiCreditsUsed <= 0) {
       console.log(`[worker] User ${userId} has no credits remaining`)
       await refundReservation()
       return

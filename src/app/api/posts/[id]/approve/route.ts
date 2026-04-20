@@ -101,64 +101,58 @@ export async function POST(
         imageBuffer = null
       }
     } else if ((prefs?.imageStyle ?? 'quote_card') === 'stock_photo') {
-      // Stock photo from Pexels
-      const canAffordImage = user.lifetimeFree || (user.aiCreditsTotal - user.aiCreditsUsed) >= IMAGE_CREDITS
-      if (canAffordImage) {
-        const creditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
-          UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${IMAGE_CREDITS}
-          WHERE id = ${userId} AND "aiCreditsUsed" + ${IMAGE_CREDITS} <= "aiCreditsTotal"
-        `
-        if (creditResult > 0) {
-          imageCreditsCost = user.lifetimeFree ? 0 : IMAGE_CREDITS
-          const stockBuffer = await fetchStockPhoto(post.topic, prefs?.niche ?? 'tech professional')
-          if (stockBuffer) {
-            imageBuffer = stockBuffer
-          } else {
-            // Pexels failed — refund and fall back to text-only
-            if (!user.lifetimeFree) {
-              await prisma.user.updateMany({
-                where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
-                data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
-              })
-            }
-            imageCreditsCost = 0
+      // Stock photo from Pexels — atomic SQL is the real guard, no stale fast-path needed
+      const creditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
+        UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${IMAGE_CREDITS}
+        WHERE id = ${userId} AND "aiCreditsUsed" + ${IMAGE_CREDITS} <= "aiCreditsTotal"
+      `
+      if (creditResult > 0) {
+        imageCreditsCost = user.lifetimeFree ? 0 : IMAGE_CREDITS
+        const stockBuffer = await fetchStockPhoto(post.topic, prefs?.niche ?? 'tech professional')
+        if (stockBuffer) {
+          imageBuffer = stockBuffer
+        } else {
+          // Pexels failed — refund and fall back to text-only
+          if (!user.lifetimeFree) {
+            await prisma.user.updateMany({
+              where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
+              data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
+            })
           }
+          imageCreditsCost = 0
         }
       }
     } else {
-      // Generate card image
-      const canAffordImage = user.lifetimeFree || (user.aiCreditsTotal - user.aiCreditsUsed) >= IMAGE_CREDITS
-      if (canAffordImage) {
-        const creditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
-          UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${IMAGE_CREDITS}
-          WHERE id = ${userId} AND "aiCreditsUsed" + ${IMAGE_CREDITS} <= "aiCreditsTotal"
-        `
+      // Generate card image — atomic SQL is the real guard, no stale fast-path needed
+      const creditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
+        UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${IMAGE_CREDITS}
+        WHERE id = ${userId} AND "aiCreditsUsed" + ${IMAGE_CREDITS} <= "aiCreditsTotal"
+      `
 
-        if (creditResult > 0) {
-          imageCreditsCost = user.lifetimeFree ? 0 : IMAGE_CREDITS
-          try {
-            imageBuffer = await generatePostImage({
-              style: (prefs?.imageStyle ?? 'quote_card') as ImageStyle,
-              content: post.generatedContent,
-              topic: post.topic,
-              niche: prefs?.niche ?? 'tech professional',
-              displayName: account.displayName ?? user.name ?? 'Professional',
-              plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
-              brandColor: prefs?.brandColor ?? undefined,
-              profilePictureUrl: account.profilePicture ?? undefined,
-              showProfilePic: prefs?.showProfilePicOnCard ?? false,
+      if (creditResult > 0) {
+        imageCreditsCost = user.lifetimeFree ? 0 : IMAGE_CREDITS
+        try {
+          imageBuffer = await generatePostImage({
+            style: (prefs?.imageStyle ?? 'quote_card') as ImageStyle,
+            content: post.generatedContent,
+            topic: post.topic,
+            niche: prefs?.niche ?? 'tech professional',
+            displayName: account.displayName ?? user.name ?? 'Professional',
+            plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
+            brandColor: prefs?.brandColor ?? undefined,
+            profilePictureUrl: account.profilePicture ?? undefined,
+            showProfilePic: prefs?.showProfilePicOnCard ?? false,
+          })
+        } catch (imgErr) {
+          console.warn('[posts/approve] Image generation failed, refunding credits and posting text-only:', imgErr)
+          if (!user.lifetimeFree) {
+            await prisma.user.updateMany({
+              where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
+              data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
             })
-          } catch (imgErr) {
-            console.warn('[posts/approve] Image generation failed, refunding credits and posting text-only:', imgErr)
-            if (!user.lifetimeFree) {
-              await prisma.user.updateMany({
-                where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
-                data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
-              })
-            }
-            imageCreditsCost = 0
-            imageBuffer = null
           }
+          imageCreditsCost = 0
+          imageBuffer = null
         }
       }
     }
@@ -170,37 +164,34 @@ export async function POST(
       let carouselCost = 0
       let linkedInPosted = false
 
-      // Only attempt carousel if credits are available (lifetimeFree bypasses credit check)
-      const canAffordCarousel = user.lifetimeFree || (user.aiCreditsTotal - user.aiCreditsUsed) >= CAROUSEL_CREDITS
-      if (canAffordCarousel) {
-        const creditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
-          UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${CAROUSEL_CREDITS}
-          WHERE id = ${userId} AND "aiCreditsUsed" + ${CAROUSEL_CREDITS} <= "aiCreditsTotal"
-        `
-        if (creditResult > 0) {
-          carouselCost = user.lifetimeFree ? 0 : CAROUSEL_CREDITS
-          try {
-            const slides = await generateCarouselSlides({
-              content: post.generatedContent,
-              topic: post.topic,
-              niche: prefs?.niche ?? 'tech professional',
-              displayName: account.displayName ?? user.name ?? 'Professional',
-              plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
-              brandColor: prefs?.brandColor ?? undefined,
+      // Atomic SQL is the real guard — no stale fast-path needed
+      const creditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
+        UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${CAROUSEL_CREDITS}
+        WHERE id = ${userId} AND "aiCreditsUsed" + ${CAROUSEL_CREDITS} <= "aiCreditsTotal"
+      `
+      if (creditResult > 0) {
+        carouselCost = user.lifetimeFree ? 0 : CAROUSEL_CREDITS
+        try {
+          const slides = await generateCarouselSlides({
+            content: post.generatedContent,
+            topic: post.topic,
+            niche: prefs?.niche ?? 'tech professional',
+            displayName: account.displayName ?? user.name ?? 'Professional',
+            plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
+            brandColor: prefs?.brandColor ?? undefined,
+          })
+          const pdfBuffer = await pngsToPdf(slides)
+          await postCarouselToLinkedIn(account.accessTokenEncrypted, account.sub, post.generatedContent, pdfBuffer)
+          linkedInPosted = true
+        } catch (carouselErr) {
+          console.warn('[posts/approve] Carousel failed, refunding and falling back:', carouselErr)
+          if (!user.lifetimeFree) {
+            await prisma.user.updateMany({
+              where: { id: userId, aiCreditsUsed: { gte: CAROUSEL_CREDITS } },
+              data: { aiCreditsUsed: { decrement: CAROUSEL_CREDITS } },
             })
-            const pdfBuffer = await pngsToPdf(slides)
-            await postCarouselToLinkedIn(account.accessTokenEncrypted, account.sub, post.generatedContent, pdfBuffer)
-            linkedInPosted = true
-          } catch (carouselErr) {
-            console.warn('[posts/approve] Carousel failed, refunding and falling back:', carouselErr)
-            if (!user.lifetimeFree) {
-              await prisma.user.updateMany({
-                where: { id: userId, aiCreditsUsed: { gte: CAROUSEL_CREDITS } },
-                data: { aiCreditsUsed: { decrement: CAROUSEL_CREDITS } },
-              })
-            }
-            carouselCost = 0
           }
+          carouselCost = 0
         }
       }
 
