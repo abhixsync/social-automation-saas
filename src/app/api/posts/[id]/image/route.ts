@@ -31,7 +31,7 @@ export async function GET(
   const [post, user, prefs] = await Promise.all([
     prisma.post.findFirst({
       where: { id, userId, status: { in: ['pending_approval', 'published'] } },
-      select: { generatedContent: true, topic: true, imageStyle: true, linkedInAccountId: true, customImageUrl: true },
+      select: { generatedContent: true, topic: true, imageStyle: true, linkedInAccountId: true, customImageUrl: true, stockPhotoUrl: true },
     }),
     prisma.user.findUnique({
       where: { id: userId },
@@ -67,11 +67,17 @@ export async function GET(
   const style = (post.imageStyle ?? prefs?.imageStyle ?? 'quote_card') as ImageStyle
   const niche = prefs?.niche ?? 'tech professional'
 
-  // Stock photo: fetch from Pexels directly (no edge route needed)
+  // Stock photo: use stored URL for consistency (same photo in preview and after publish),
+  // or fetch fresh from Pexels and persist the URL for future requests.
   if (style === 'stock_photo') {
-    const buffer = await fetchStockPhoto(post.topic, niche)
-    if (buffer) {
-      return new Response(new Uint8Array(buffer), {
+    if (post.stockPhotoUrl) {
+      return NextResponse.redirect(post.stockPhotoUrl)
+    }
+    const result = await fetchStockPhoto(post.topic, niche)
+    if (result) {
+      // Persist URL so every subsequent request (approve, post-publish display) uses the same photo
+      prisma.post.update({ where: { id }, data: { stockPhotoUrl: result.url } }).catch(() => {})
+      return new Response(new Uint8Array(result.buffer), {
         headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=3600' },
       })
     }

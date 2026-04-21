@@ -721,6 +721,24 @@ export default function PostsPage() {
                   </div>
                 </div>
               )}
+              {viewPost?.status === 'published' && !viewPost.isCarousel && viewPost.includeImage && (
+                <div className="border-t pt-4 mt-4">
+                  <p className="text-xs text-gray-500 font-medium mb-3">Published Image</p>
+                  <div className="relative w-64 h-64 mx-auto rounded-xl overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-500 flex flex-col items-center justify-center gap-2">
+                      <ImageIcon className="w-10 h-10 text-white/60" />
+                      <span className="text-white/50 text-xs">Loading…</span>
+                    </div>
+                    <img
+                      src={viewPost.customImageUrl ?? `/api/posts/${viewPost.id}/image`}
+                      alt="LinkedIn post image"
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

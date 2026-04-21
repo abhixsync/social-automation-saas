@@ -196,6 +196,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
           aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
           includeImage: prefs?.autoImage ?? true,
           isCarousel: prefs?.carouselMode ?? false,
+          imageStyle: (prefs?.imageStyle ?? null) as Parameters<typeof tx.post.create>[0]['data']['imageStyle'],
           scheduledFor: new Date(),
         },
       })
@@ -218,12 +219,18 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   const shouldPostImage = prefs?.autoImage ?? true
   const imgStyle = prefs?.imageStyle ?? 'quote_card'
   let imageBuffer: Buffer | null = null
+  let stockPhotoUrl: string | null = null
 
   if (shouldPostImage) {
     if (imgStyle === 'stock_photo') {
       // Fetch stock photo from Pexels
-      imageBuffer = await fetchStockPhoto(topic, niche)
-      if (!imageBuffer) console.warn(`[worker] Pexels returned no photo, falling back to text-only`)
+      const stockResult = await fetchStockPhoto(topic, niche)
+      if (stockResult) {
+        imageBuffer = stockResult.buffer
+        stockPhotoUrl = stockResult.url
+      } else {
+        console.warn(`[worker] Pexels returned no photo, falling back to text-only`)
+      }
     } else {
       try {
         imageBuffer = await generatePostImage({

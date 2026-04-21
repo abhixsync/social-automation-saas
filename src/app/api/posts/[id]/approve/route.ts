@@ -73,6 +73,7 @@ export async function POST(
   const shouldPostImage = post.includeImage
   let imageBuffer: Buffer | null = null
   let imageCreditsCost = 0
+  let resolvedStockPhotoUrl: string | null = null
 
   if (shouldPostImage) {
     if (post.customImageUrl) {
@@ -100,7 +101,7 @@ export async function POST(
         console.warn('[posts/approve] Custom image fetch failed, posting text-only:', err)
         imageBuffer = null
       }
-    } else if ((prefs?.imageStyle ?? 'quote_card') === 'stock_photo') {
+    } else if (((post.imageStyle ?? prefs?.imageStyle) ?? 'quote_card') === 'stock_photo') {
       // Stock photo from Pexels — atomic SQL is the real guard, no stale fast-path needed
       const creditResult: number = user.lifetimeFree ? 1 : await prisma.$executeRaw`
         UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${IMAGE_CREDITS}
@@ -108,18 +109,31 @@ export async function POST(
       `
       if (creditResult > 0) {
         imageCreditsCost = user.lifetimeFree ? 0 : IMAGE_CREDITS
-        const stockBuffer = await fetchStockPhoto(post.topic, prefs?.niche ?? 'tech professional')
-        if (stockBuffer) {
-          imageBuffer = stockBuffer
-        } else {
-          // Pexels failed — refund and fall back to text-only
-          if (!user.lifetimeFree) {
-            await prisma.user.updateMany({
-              where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
-              data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
-            })
+        // Re-download from the stored URL so approve uses the same photo the user previewed
+        if (post.stockPhotoUrl) {
+          try {
+            const imgRes = await fetch(post.stockPhotoUrl, { signal: AbortSignal.timeout(15_000) })
+            if (imgRes.ok) {
+              imageBuffer = Buffer.from(await imgRes.arrayBuffer())
+              resolvedStockPhotoUrl = post.stockPhotoUrl
+            }
+          } catch { /* fall through to fresh fetch */ }
+        }
+        if (!imageBuffer) {
+          const stockResult = await fetchStockPhoto(post.topic, prefs?.niche ?? 'tech professional')
+          if (stockResult) {
+            imageBuffer = stockResult.buffer
+            resolvedStockPhotoUrl = stockResult.url
+          } else {
+            // Pexels failed — refund and fall back to text-only
+            if (!user.lifetimeFree) {
+              await prisma.user.updateMany({
+                where: { id: userId, aiCreditsUsed: { gte: IMAGE_CREDITS } },
+                data: { aiCreditsUsed: { decrement: IMAGE_CREDITS } },
+              })
+            }
+            imageCreditsCost = 0
           }
-          imageCreditsCost = 0
         }
       }
     } else {
@@ -133,7 +147,7 @@ export async function POST(
         imageCreditsCost = user.lifetimeFree ? 0 : IMAGE_CREDITS
         try {
           imageBuffer = await generatePostImage({
-            style: (prefs?.imageStyle ?? 'quote_card') as ImageStyle,
+            style: ((post.imageStyle ?? prefs?.imageStyle ?? 'quote_card') as ImageStyle),
             content: post.generatedContent,
             topic: post.topic,
             niche: prefs?.niche ?? 'tech professional',
@@ -210,6 +224,7 @@ export async function POST(
           status: 'published',
           publishedAt: new Date(),
           creditsUsed: post.creditsUsed + imageCreditsCost + carouselCost,
+          ...(resolvedStockPhotoUrl ? { stockPhotoUrl: resolvedStockPhotoUrl } : {}),
         },
       })
       return NextResponse.json({ post: updated })
@@ -228,8 +243,9 @@ export async function POST(
         status: 'published',
         publishedAt: new Date(),
         includeImage: imageBuffer !== null,
-        imageStyle: imageBuffer ? (prefs?.imageStyle ?? 'quote_card') : null,
+        imageStyle: imageBuffer ? ((post.imageStyle ?? prefs?.imageStyle ?? 'quote_card') as ImageStyle) : null,
         creditsUsed: post.creditsUsed + imageCreditsCost,
+        ...(resolvedStockPhotoUrl ? { stockPhotoUrl: resolvedStockPhotoUrl } : {}),
       },
     })
 

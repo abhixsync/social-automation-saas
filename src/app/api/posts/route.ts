@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
           errorMessage: true,
           includeImage: true,
           isCarousel: true,
+          customImageUrl: true,
           publishedAt: true,
           scheduledFor: true,
           createdAt: true,

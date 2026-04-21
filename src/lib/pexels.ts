@@ -58,7 +58,7 @@ async function buildImageQuery(topic: string, niche: string): Promise<string> {
 export async function fetchStockPhoto(
   topic: string,
   niche: string,
-): Promise<Buffer | null> {
+): Promise<{ buffer: Buffer; url: string } | null> {
   const apiKey = process.env.PEXELS_API_KEY
   if (!apiKey) {
     console.warn('[pexels] PEXELS_API_KEY not set — skipping stock photo')
@@ -113,7 +113,7 @@ export async function fetchStockPhoto(
       return null
     }
 
-    return Buffer.from(arrayBuffer)
+    return { buffer: Buffer.from(arrayBuffer), url: imageUrl }
   } catch (err) {
     console.error('[pexels] Error fetching stock photo:', err)
     return null
