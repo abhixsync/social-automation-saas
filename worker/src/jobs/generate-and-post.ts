@@ -20,11 +20,14 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   const reservation = job.data.manualReservation ?? 0
 
   // Refund the API-route reservation on early exit (inactive account, expired token, no credits).
-  // Uses GREATEST to avoid going below 0 if the credit row was already adjusted.
+  // Increments aiCreditsTotal instead of decrementing aiCreditsUsed to avoid a race with monthly
+  // credit resets: if the reset fires between reservation and refund, aiCreditsUsed is already 0
+  // and a used-- would be a no-op (GREATEST prevents going negative), silently losing 1 credit.
+  // total++ is always safe and has the same net "credits available" effect.
   async function refundReservation(): Promise<void> {
     if (reservation <= 0) return
     await prisma.$executeRaw`
-      UPDATE "User" SET "aiCreditsUsed" = GREATEST("aiCreditsUsed" - ${reservation}, 0)
+      UPDATE "User" SET "aiCreditsTotal" = "aiCreditsTotal" + ${reservation}
       WHERE id = ${userId}
     `.catch((err) => console.error('[worker] Reservation refund failed:', err))
   }
@@ -245,38 +248,13 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
   const imgCredits = IMAGE_CREDITS
   const totalCredits = creditsUsed + (imageBuffer ? imgCredits : 0)
 
-  // 8. Deduct credits atomically BEFORE posting to LinkedIn.
-  // For manually-triggered jobs, the API route already reserved 1 credit to prevent queue flooding.
-  // We subtract that reservation from the net amount so the user is charged exactly `totalCredits`.
+  // 8. Compute netCredits (reservation already deducted by API route — subtract it so user pays exactly totalCredits).
   // lifetimeFree users bypass credit accounting entirely.
+  // NOTE: credit deduction is intentionally deferred until AFTER LinkedIn succeeds (step 9 transaction)
+  // so that a crash between deduction and Post.create cannot lose credits without a record.
   const netCredits = Math.max(0, totalCredits - reservation)
 
-  if (!user.lifetimeFree && netCredits > 0) {
-    const creditResult: number = await prisma.$executeRaw`
-      UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${netCredits}
-      WHERE id = ${userId} AND "aiCreditsUsed" + ${netCredits} <= "aiCreditsTotal"
-    `
-    if (creditResult === 0) {
-      console.log(`[worker] User ${userId} ran out of credits (concurrent job) — aborting LinkedIn post`)
-      await prisma.post.create({
-        data: {
-          userId,
-          linkedInAccountId: accountId,
-          topic,
-          generatedContent: content,
-          wordCount,
-          creditsUsed: 0,
-          status: 'failed',
-          aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
-          includeImage: false,
-          errorMessage: 'Insufficient credits',
-        },
-      })
-      return
-    }
-  } // end lifetimeFree / netCredits guard
-
-  // 9. Post to LinkedIn (carousel or standard)
+  // 9. Post to LinkedIn (carousel or standard), then atomically deduct credits + create Post record.
   let useCarousel = prefs?.carouselMode ?? false
   let carouselCost = 0
   try {
@@ -321,35 +299,85 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
       await postToLinkedIn(account.accessTokenEncrypted, account.sub, content)
     }
 
-    await prisma.post.create({
-      data: {
-        userId,
-        linkedInAccountId: accountId,
-        topic,
-        generatedContent: content,
-        wordCount,
-        creditsUsed: user.lifetimeFree ? 0 : totalCredits + carouselCost,
-        status: 'published',
-        aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
-        includeImage: imageBuffer !== null,
-        isCarousel: useCarousel,
-        imageStyle: imageBuffer ? ((prefs?.imageStyle ?? 'quote_card') as Parameters<typeof prisma.post.create>[0]['data']['imageStyle']) : null,
-        publishedAt: new Date(),
-      },
-    })
-
-    console.log(`[worker] ✅ Published post for user ${userId}${useCarousel ? ' (carousel)' : imageBuffer ? ' (with image)' : ''}`)
-  } catch (err) {
-    console.error(`[worker] LinkedIn post failed:`, err)
-    // Refund credits (best effort — failure here means user loses credits for a post that didn't go live)
-    // Include carouselCost since it's now hoisted and accessible here
-    if (!user.lifetimeFree) {
-      await prisma.user.updateMany({
-        where: { id: userId, aiCreditsUsed: { gte: totalCredits + carouselCost } },
-        data: { aiCreditsUsed: { decrement: totalCredits + carouselCost } },
-      }).catch((refundErr) => console.error('[worker] Credit refund failed:', refundErr))
+    // LinkedIn succeeded — now atomically deduct credits AND create the Post record in one transaction.
+    // This eliminates the window where credits are deducted but no Post record exists (crash safety).
+    const finalCreditsUsed = user.lifetimeFree ? 0 : totalCredits + carouselCost
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Deduct credits atomically (skip for lifetimeFree; also skip if netCredits is 0 after reservation)
+        if (!user.lifetimeFree && netCredits > 0) {
+          const creditResult: number = await tx.$executeRaw`
+            UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${netCredits}
+            WHERE id = ${userId} AND "aiCreditsUsed" + ${netCredits} <= "aiCreditsTotal"
+          `
+          if (creditResult === 0) throw new Error('INSUFFICIENT_CREDITS')
+        }
+        // Create the published post record atomically with the credit deduction
+        await tx.post.create({
+          data: {
+            userId,
+            linkedInAccountId: accountId,
+            topic,
+            generatedContent: content,
+            wordCount,
+            creditsUsed: finalCreditsUsed,
+            status: 'published',
+            aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+            includeImage: imageBuffer !== null,
+            isCarousel: useCarousel,
+            imageStyle: imageBuffer ? ((prefs?.imageStyle ?? 'quote_card') as Parameters<typeof prisma.post.create>[0]['data']['imageStyle']) : null,
+            publishedAt: new Date(),
+          },
+        })
+      })
+      console.log(`[worker] Published post for user ${userId}${useCarousel ? ' (carousel)' : imageBuffer ? ' (with image)' : ''}`)
+    } catch (txErr) {
+      if (txErr instanceof Error && txErr.message === 'INSUFFICIENT_CREDITS') {
+        // Post already published to LinkedIn — cannot undo. Record it with creditsUsed=0 and warn.
+        // Do NOT create a failed post since the content IS live on LinkedIn.
+        console.warn(`[worker] Post published but credit deduction failed (insufficient credits) for user ${userId} — recording with creditsUsed=0`)
+        await prisma.post.create({
+          data: {
+            userId,
+            linkedInAccountId: accountId,
+            topic,
+            generatedContent: content,
+            wordCount,
+            creditsUsed: 0,
+            status: 'published',
+            aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+            includeImage: imageBuffer !== null,
+            isCarousel: useCarousel,
+            imageStyle: imageBuffer ? ((prefs?.imageStyle ?? 'quote_card') as Parameters<typeof prisma.post.create>[0]['data']['imageStyle']) : null,
+            publishedAt: new Date(),
+          },
+        }).catch((createErr) => console.error('[worker] Failed to create post record after INSUFFICIENT_CREDITS:', createErr))
+      } else {
+        // Transaction failed for another reason (DB unavailable, etc.) — post IS live but record failed.
+        // Refund the reservation since credit deduction was rolled back by the failed transaction.
+        console.error(`[worker] Post published but post-creation transaction failed for user ${userId}:`, txErr)
+        await refundReservation()
+        await prisma.post.create({
+          data: {
+            userId,
+            linkedInAccountId: accountId,
+            topic,
+            generatedContent: content,
+            wordCount,
+            creditsUsed: 0,
+            status: 'failed',
+            aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
+            includeImage: false,
+            errorMessage: txErr instanceof Error ? txErr.message.slice(0, 500) : 'Post-creation transaction failed',
+          },
+        }).catch((createErr) => console.error('[worker] Failed to create failed post record after tx error:', createErr))
+      }
     }
-
+  } catch (err) {
+    // LinkedIn post itself failed — no credit deduction occurred, so no refund needed.
+    // The reservation was pre-deducted by the API route; refund it since we never charged credits.
+    console.error(`[worker] LinkedIn post failed:`, err)
+    await refundReservation()
     await prisma.post.create({
       data: {
         userId,

@@ -157,9 +157,10 @@ describe('POST /api/billing/webhook', () => {
     })
     const res = await POST(req)
     expect(res.status).toBe(200)
-    expect(mockPrisma.user.updateMany).toHaveBeenCalledWith(
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { plan: 'free', dodoSubscriptionId: null } }),
     )
+    expect(resetMonthlyCredits).toHaveBeenCalledWith('user_1', 'free')
   })
 
   it('handles payment.succeeded — adds topup credits', async () => {

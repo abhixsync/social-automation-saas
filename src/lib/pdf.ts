@@ -5,6 +5,7 @@ import { PDFDocument } from 'pdf-lib'
  * Each image becomes one page at 1080×1080 points.
  */
 export async function pngsToPdf(pngs: Buffer[]): Promise<Buffer> {
+  if (pngs.length === 0) throw new Error('Cannot create PDF with zero pages')
   const doc = await PDFDocument.create()
 
   for (const png of pngs) {

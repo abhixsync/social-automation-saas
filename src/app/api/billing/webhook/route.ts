@@ -72,15 +72,22 @@ export async function POST(req: NextRequest) {
           userId = found.id
         }
 
-        await prisma.user.update({
+        const updatedUser = await prisma.user.update({
           where: { id: userId },
           data: {
             plan: 'pro',
             dodoSubscriptionId: data.subscription_id,
             dodoCustomerId: data.customer_id,
           },
+          select: { creditsResetAt: true },
         })
-        await resetMonthlyCredits(userId, 'pro')
+
+        // Idempotent: skip if credits were reset within the last 2 hours
+        const resetRecentlyActive = updatedUser.creditsResetAt &&
+          (Date.now() - updatedUser.creditsResetAt.getTime()) < 2 * 60 * 60 * 1000
+        if (!resetRecentlyActive) {
+          await resetMonthlyCredits(userId, 'pro')
+        }
         break
       }
 
@@ -88,11 +95,16 @@ export async function POST(req: NextRequest) {
         const data = event.data as DodoSubscriptionEventData
         const user = await prisma.user.findFirst({
           where: { dodoSubscriptionId: data.subscription_id },
-          select: { id: true },
+          select: { id: true, creditsResetAt: true },
         })
         if (!user) break
 
-        await resetMonthlyCredits(user.id, 'pro')
+        // Idempotent: skip if credits were reset within the last 23 hours
+        const resetRecently = user.creditsResetAt &&
+          (Date.now() - user.creditsResetAt.getTime()) < 23 * 60 * 60 * 1000
+        if (!resetRecently) {
+          await resetMonthlyCredits(user.id, 'pro')
+        }
         break
       }
 

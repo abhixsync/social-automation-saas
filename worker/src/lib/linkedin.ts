@@ -83,7 +83,7 @@ export async function postToLinkedInWithImage(
     isReshareDisabledByAuthor: false,
   }
 
-  const res = await fetch(`${LINKEDIN_API_BASE}/rest/posts`, {
+  let res = await fetch(`${LINKEDIN_API_BASE}/rest/posts`, {
     method: 'POST',
     signal: AbortSignal.timeout(30_000),
     headers: {
@@ -94,6 +94,21 @@ export async function postToLinkedInWithImage(
     },
     body: JSON.stringify(body),
   })
+  if (res.status >= 500 && res.status < 600) {
+    // Transient server error — retry once after 2s
+    await new Promise(r => setTimeout(r, 2000))
+    res = await fetch(`${LINKEDIN_API_BASE}/rest/posts`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(30_000),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Restli-Protocol-Version': '2.0.0',
+        'LinkedIn-Version': LINKEDIN_VERSION,
+      },
+      body: JSON.stringify(body),
+    })
+  }
 
   if (res.status !== 201) {
     const err = await res.text()
@@ -202,34 +217,46 @@ export async function postCarouselToLinkedIn(
   }
 
   // Step 3: Create the post with the document
-  const postRes = await fetch(`${LINKEDIN_API_BASE}/rest/posts`, {
+  const carouselBody = JSON.stringify({
+    author: personUrn,
+    commentary: text,
+    visibility: 'PUBLIC',
+    distribution: {
+      feedDistribution: 'MAIN_FEED',
+      targetEntities: [],
+      thirdPartyDistributionChannels: [],
+    },
+    content: {
+      media: {
+        title: 'Carousel',
+        id: documentUrn,
+      },
+    },
+    lifecycleState: 'PUBLISHED',
+    isReshareDisabledByAuthor: false,
+  })
+  const carouselHeaders = {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+    'X-Restli-Protocol-Version': '2.0.0',
+    'LinkedIn-Version': LINKEDIN_VERSION,
+  }
+  let postRes = await fetch(`${LINKEDIN_API_BASE}/rest/posts`, {
     method: 'POST',
     signal: AbortSignal.timeout(30_000),
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      'X-Restli-Protocol-Version': '2.0.0',
-      'LinkedIn-Version': LINKEDIN_VERSION,
-    },
-    body: JSON.stringify({
-      author: personUrn,
-      commentary: text,
-      visibility: 'PUBLIC',
-      distribution: {
-        feedDistribution: 'MAIN_FEED',
-        targetEntities: [],
-        thirdPartyDistributionChannels: [],
-      },
-      content: {
-        media: {
-          title: 'Carousel',
-          id: documentUrn,
-        },
-      },
-      lifecycleState: 'PUBLISHED',
-      isReshareDisabledByAuthor: false,
-    }),
+    headers: carouselHeaders,
+    body: carouselBody,
   })
+  if (postRes.status >= 500 && postRes.status < 600) {
+    // Transient server error — retry once after 2s
+    await new Promise(r => setTimeout(r, 2000))
+    postRes = await fetch(`${LINKEDIN_API_BASE}/rest/posts`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(30_000),
+      headers: carouselHeaders,
+      body: carouselBody,
+    })
+  }
 
   if (postRes.status !== 201) {
     const err = await postRes.text()

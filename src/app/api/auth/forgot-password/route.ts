@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import crypto, { createHash } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, getClientIp } from '@/lib/ratelimit'
+import { sendPasswordResetEmail } from '@/lib/email'
 
 const schema = z.object({
   email: z.string().email(),
@@ -23,9 +25,24 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({ where: { email } })
 
-    if (user) {
-      // TODO: send actual reset email via resend
-      console.log('[forgot-password] Reset requested for user')
+    if (user && user.passwordHash) {
+      const rawToken = crypto.randomBytes(32).toString('hex')
+      const hashedToken = createHash('sha256').update(rawToken).digest('hex')
+      const expires = new Date(Date.now() + 3_600_000) // 1 hour
+
+      // Delete any existing token for this email before creating a new one
+      await prisma.verificationToken.deleteMany({ where: { identifier: email } })
+
+      await prisma.verificationToken.create({
+        data: {
+          identifier: email,
+          token: hashedToken,
+          expires,
+        },
+      })
+
+      const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${rawToken}`
+      await sendPasswordResetEmail(email, resetUrl)
     }
 
     return NextResponse.json(RESPONSE)

@@ -76,16 +76,16 @@ describe('deductCredits', () => {
   })
 
   it('deducts credits atomically and returns the amount', async () => {
-    ;(mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({ lifetimeFree: false, aiCreditsTotal: 1000 })
-    ;(mockPrisma.user.updateMany as jest.Mock).mockResolvedValue({ count: 1 })
+    ;(mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({ lifetimeFree: false })
+    ;(mockPrisma.$executeRaw as jest.Mock).mockResolvedValue(1)
     const result = await deductCredits('u1', 100)
     expect(result).toBeGreaterThan(0)
-    expect(mockPrisma.user.updateMany).toHaveBeenCalled()
+    expect(mockPrisma.$executeRaw).toHaveBeenCalled()
   })
 
   it('throws when atomic update returns 0 rows (insufficient credits)', async () => {
-    ;(mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({ lifetimeFree: false, aiCreditsTotal: 1000 })
-    ;(mockPrisma.user.updateMany as jest.Mock).mockResolvedValue({ count: 0 })
+    ;(mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({ lifetimeFree: false })
+    ;(mockPrisma.$executeRaw as jest.Mock).mockResolvedValue(0)
     await expect(deductCredits('u1', 1000)).rejects.toThrow('Insufficient credits')
   })
 })

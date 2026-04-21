@@ -111,14 +111,27 @@ process.on('SIGINT', () => shutdown('SIGINT'))
 // ─── Health endpoint ──────────────────────────────────────────────────────────
 
 const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT ?? '9000', 10)
-const healthServer = createServer((req, res) => {
+const healthServer = createServer()
+healthServer.on('request', async (req, res) => {
   if (req.method === 'GET' && req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ status: 'ok', uptime: Math.floor(process.uptime()) }))
-  } else {
-    res.writeHead(404)
-    res.end()
+    try {
+      const [redisOk, dbOk] = await Promise.allSettled([
+        redis.ping().then(() => true),
+        prisma.$queryRaw`SELECT 1`.then(() => true),
+      ])
+      const rOk = redisOk.status === 'fulfilled' && redisOk.value === true
+      const dOk = dbOk.status === 'fulfilled' && dbOk.value === true
+      const healthy = rOk && dOk
+      res.writeHead(healthy ? 200 : 503, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ status: healthy ? 'ok' : 'degraded', redis: rOk, db: dOk, uptime: Math.floor(process.uptime()) }))
+    } catch {
+      res.writeHead(503, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ status: 'error', uptime: Math.floor(process.uptime()) }))
+    }
+    return
   }
+  res.writeHead(404)
+  res.end()
 })
 healthServer.listen(HEALTH_PORT, () => {
   console.log(`[worker] Health endpoint → http://0.0.0.0:${HEALTH_PORT}/health`)

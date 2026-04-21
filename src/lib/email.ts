@@ -116,3 +116,76 @@ export async function sendWelcomeEmail(email: string, name: string | null): Prom
     console.error('[email/sendWelcomeEmail]', err)
   }
 }
+
+export async function sendPasswordResetEmail(email: string, resetUrl: string): Promise<void> {
+  const resend = getResend()
+  if (!resend) return
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset your Crescova password</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#2563eb;padding:32px 40px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:-0.5px;">Crescova</h1>
+              <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">AI-powered LinkedIn content on autopilot</p>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px;">
+              <h2 style="margin:0 0 16px;color:#111827;font-size:22px;font-weight:600;">Reset your password</h2>
+              <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
+                We received a request to reset your Crescova password. Click the button below to choose a new one. This link expires in 1 hour.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 32px;">
+                <tr>
+                  <td align="center">
+                    <a href="${resetUrl}"
+                       style="display:inline-block;background-color:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:600;">
+                      Reset password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">
+                If you didn't request a password reset, you can safely ignore this email. Your password will not change.
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px;border-top:1px solid #e5e7eb;text-align:center;">
+              <p style="margin:0;color:#9ca3af;font-size:12px;">
+                You're receiving this because a password reset was requested for your Crescova account.<br />
+                &copy; ${new Date().getFullYear()} Crescova. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: 'Reset your Crescova password',
+      html,
+    })
+  } catch (err) {
+    console.error('[email/sendPasswordResetEmail]', err)
+  }
+}

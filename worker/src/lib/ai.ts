@@ -155,6 +155,10 @@ export async function generatePost(
   content = sanitizeForLinkedIn(content)
   const wordCount = countWords(content)
 
+  if (!content.trim() || wordCount < 10) {
+    throw new Error(`AI returned empty or near-empty content (${wordCount} words). Provider: ${modelKey}`)
+  }
+
   return { content, wordCount, model: modelKey }
 }
 

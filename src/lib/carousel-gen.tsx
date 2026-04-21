@@ -58,6 +58,7 @@ function darkenHex(hex: string, percent: number): string {
  */
 export async function generateCarouselSlides(opts: SlideOpts): Promise<Buffer[]> {
   const { content, topic, niche, displayName, plan, brandColor } = opts
+  if (!content?.trim()) throw new Error('Cannot generate carousel from empty content')
   const showWatermark = plan === 'free'
   const fontFamily = 'sans-serif'
 

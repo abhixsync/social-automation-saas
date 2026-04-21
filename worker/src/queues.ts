@@ -30,8 +30,8 @@ export function createWorker(processor: Processor) {
     connection: redis,
     concurrency: 5,
     stalledInterval: 300_000, // Check stalled jobs every 5 min (default: 30s → saves ~2,592 req/day)
-    lockDuration: 120_000,    // 2 min lock duration
-    lockRenewTime: 60_000,    // Renew lock every 1 min (default: 5s → saves ~2,016 req/day on active jobs)
+    lockDuration: 300_000,    // 5 min lock duration (covers worst-case carousel generation)
+    lockRenewTime: 30_000,    // Renew lock every 30s (frequent renewal avoids expiry)
     drainDelay: 30,           // 30ms drain delay when queue is empty (default: 5ms)
   })
 }
