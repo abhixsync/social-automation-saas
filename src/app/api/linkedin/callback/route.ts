@@ -47,15 +47,18 @@ export async function GET(req: NextRequest) {
     // Fetch LinkedIn profile (sub = person ID)
     const userInfo = await getLinkedInUserInfo(tokenData.access_token)
 
-    // Guard: reject if another app user already owns this LinkedIn account.
-    // Without this check the same LinkedIn identity could be linked to multiple app users.
+    // If another app user has this LinkedIn sub active, deactivate that record.
+    // The current user just proved ownership via OAuth, so ownership follows auth.
     const conflictingAccount = await prisma.linkedInAccount.findFirst({
       where: { sub: userInfo.sub, isActive: true, NOT: { userId: session.user.id } },
       select: { id: true },
     })
     if (conflictingAccount) {
-      console.error('[linkedin/callback] account_claimed — sub:', userInfo.sub, 'userId:', session.user.id)
-      return NextResponse.redirect(`${appUrl}/dashboard/accounts?error=account_claimed`)
+      console.warn('[linkedin/callback] transferring sub from another user — sub:', userInfo.sub, 'new owner:', session.user.id)
+      await prisma.linkedInAccount.update({
+        where: { id: conflictingAccount.id },
+        data: { isActive: false },
+      })
     }
 
     // Encrypt and store the token
