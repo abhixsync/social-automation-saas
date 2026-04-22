@@ -143,6 +143,7 @@ function sanitizeForLinkedIn(text: string): string {
     .replace(/(?<!\w)\*(.*?)\*(?!\w)/g, '$1') // *italic* → content (not mid-word like 5*3*2)
     .replace(/^#{1,6}\s/gm, '')               // # headings at line start only
     .replace(/`+([^`]+)`+/g, '$1')            // `code` → content (preserve the term)
+    .replace(/^[ \t]+$/gm, '')               // lines with only whitespace → empty lines
     .replace(/\n{3,}/g, '\n\n')               // collapse 3+ newlines → exactly one blank line
     .trim()
 }
@@ -154,6 +155,5 @@ export function countWords(text: string): number {
 // Pick next topic from content pillars (rotates by day of week)
 export function pickTopic(contentPillars: string[]): string {
   if (!contentPillars.length) return 'AI and technology trends'
-  const dayIndex = new Date().getDay()
-  return contentPillars[dayIndex % contentPillars.length]
+  return contentPillars[Math.floor(Math.random() * contentPillars.length)]
 }
