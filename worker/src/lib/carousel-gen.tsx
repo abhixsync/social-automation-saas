@@ -7,6 +7,8 @@ interface SlideOpts {
   displayName: string
   plan: 'free' | 'pro'
   brandColor?: string
+  profilePictureUrl?: string
+  showProfilePic?: boolean
 }
 
 // Split post content into logical slides
@@ -57,7 +59,7 @@ function darkenHex(hex: string, percent: number): string {
  * Each slide is 1080×1080.
  */
 export async function generateCarouselSlides(opts: SlideOpts): Promise<Buffer[]> {
-  const { content, topic, niche, displayName, plan, brandColor } = opts
+  const { content, topic, niche, displayName, plan, brandColor, profilePictureUrl, showProfilePic } = opts
   if (!content?.trim()) throw new Error('Cannot generate carousel from empty content')
   const showWatermark = plan === 'free'
   const fontFamily = 'sans-serif'
@@ -84,7 +86,10 @@ export async function generateCarouselSlides(opts: SlideOpts): Promise<Buffer[]>
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: `linear-gradient(${angle}deg, ${from}, ${to})`, padding: '100px', fontFamily, justifyContent: 'center', position: 'relative' }}>
           <div style={{ display: 'flex', fontSize: 20, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 4, marginBottom: 24 }}>{niche}</div>
           <div style={{ display: 'flex', fontSize: text.length > 80 ? 48 : 60, fontWeight: 700, color: 'white', lineHeight: 1.2 }}>{text.length > 150 ? text.slice(0, 147) + '…' : text}</div>
-          <div style={{ display: 'flex', marginTop: 48, fontSize: 24, color: 'rgba(255,255,255,0.7)' }}>— {displayName}</div>
+          <div style={{ display: 'flex', alignItems: 'center', marginTop: 48, gap: 16 }}>
+            {showProfilePic && profilePictureUrl && <img src={profilePictureUrl} width={48} height={48} style={{ borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', flexShrink: 0 }} />}
+            <div style={{ display: 'flex', fontSize: 24, color: 'rgba(255,255,255,0.7)' }}>— {displayName}</div>
+          </div>
           <div style={{ display: 'flex', position: 'absolute', bottom: 40, right: 50, fontSize: 18, color: 'rgba(255,255,255,0.4)' }}>Swipe →</div>
           {showWatermark && <div style={{ display: 'flex', position: 'absolute', bottom: 40, left: 50, fontSize: 16, color: 'rgba(255,255,255,0.25)' }}>Crescova</div>}
         </div>
@@ -94,7 +99,10 @@ export async function generateCarouselSlides(opts: SlideOpts): Promise<Buffer[]>
       jsx = (
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: `linear-gradient(${angle}deg, ${from}, ${to})`, padding: '100px', fontFamily, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
           <div style={{ display: 'flex', fontSize: text.length > 100 ? 40 : 48, fontWeight: 600, color: 'white', textAlign: 'center', lineHeight: 1.3 }}>{text.length > 200 ? text.slice(0, 197) + '…' : text}</div>
-          <div style={{ display: 'flex', marginTop: 48, fontSize: 22, color: 'rgba(255,255,255,0.7)' }}>Follow {displayName} for more</div>
+          <div style={{ display: 'flex', alignItems: 'center', marginTop: 48, gap: 16 }}>
+            {showProfilePic && profilePictureUrl && <img src={profilePictureUrl} width={48} height={48} style={{ borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', flexShrink: 0 }} />}
+            <div style={{ display: 'flex', fontSize: 22, color: 'rgba(255,255,255,0.7)' }}>Follow {displayName} for more</div>
+          </div>
           <div style={{ display: 'flex', position: 'absolute', bottom: 40, fontSize: 18, color: 'rgba(255,255,255,0.5)' }}>{i + 1} / {slideTexts.length}</div>
           {showWatermark && <div style={{ display: 'flex', position: 'absolute', bottom: 40, left: 50, fontSize: 16, color: 'rgba(255,255,255,0.25)' }}>Crescova</div>}
         </div>

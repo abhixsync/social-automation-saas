@@ -220,6 +220,8 @@ export async function POST(
             displayName: account.displayName ?? user.name ?? 'Professional',
             plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
             brandColor: prefs?.brandColor ?? undefined,
+            profilePictureUrl: account.profilePicture ?? undefined,
+            showProfilePic: prefs?.showProfilePicOnCard ?? false,
           })
           const pdfBuffer = await pngsToPdf(slides)
           await postCarouselToLinkedIn(account.accessTokenEncrypted, account.sub, post.generatedContent, pdfBuffer)
