@@ -111,6 +111,9 @@ const TONES = [
   { value: 'builder_in_public', label: 'Builder in Public' },
   { value: 'educator', label: 'Educator' },
   { value: 'mentor', label: 'Mentor' },
+  { value: 'funny', label: 'Funny' },
+  { value: 'pun', label: 'Pun' },
+  { value: 'meme', label: 'Meme' },
 ]
 
 const TIMEZONES = [

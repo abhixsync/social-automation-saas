@@ -61,6 +61,9 @@ function buildPrompt(
     builder_in_public: 'transparent and vulnerable, sharing progress, failures, and learnings openly — celebrating wins and setbacks equally',
     educator: 'breaks down complex concepts clearly and simply, teaching step by step so anyone can follow along',
     mentor: 'speaks from experience to help junior professionals grow, warm and encouraging — "what I wish someone told me earlier"',
+    funny: 'genuinely funny and light-hearted — uses wit, unexpected twists, and relatable humor to make the point stick; never try-hard, always natural',
+    pun: 'heavy on puns, wordplay, and clever double meanings — groan-worthy but memorable; weave at least one strong pun into the hook and one more into the body',
+    meme: 'writes in internet/meme culture style — uses relatable formats, pop-culture references, and viral humor patterns (e.g. "nobody: … me: …", "me explaining X to Y") while still delivering real value',
   }
   const toneDesc = toneMap[tone] ?? 'professional'
 

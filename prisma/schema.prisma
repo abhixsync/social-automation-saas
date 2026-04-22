@@ -32,6 +32,9 @@ enum Tone {
   builder_in_public
   educator
   mentor
+  funny
+  pun
+  meme
 }
 
 enum PostStatus {
