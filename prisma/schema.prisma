@@ -239,6 +239,7 @@ model Post {
   includeImage      Boolean    @default(true)
   imageStyle        ImageStyle?
   customImageUrl    String?    // Vercel Blob URL for user-uploaded image
+  generatedImageUrl String?    // Vercel Blob URL for image pre-generated at pending_approval creation time
   stockPhotoUrl     String?    // Pexels CDN URL — stored on first fetch for preview/publish consistency
   isCarousel        Boolean    @default(false)
   createdAt         DateTime   @default(now())

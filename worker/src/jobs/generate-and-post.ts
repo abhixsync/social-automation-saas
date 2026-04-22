@@ -1,4 +1,5 @@
 import type { Job } from 'bullmq'
+import { put, del } from '@vercel/blob'
 import { prisma } from '../lib/prisma.js'
 import { generatePost, pickTopic, countWords } from '../lib/ai.js'
 import { postToLinkedIn, postToLinkedInWithImage, postCarouselToLinkedIn } from '../lib/linkedin.js'
@@ -172,15 +173,67 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
 
   const creditsUsed = wordsToCredits(wordCount)
 
-  // 6. Approval mode: save as pending_approval (atomic: post + credit deduction with race guard)
+  // 6. Approval mode: generate image now (locked to current settings), upload to blob,
+  //    then atomically deduct all credits + create pending_approval post in one transaction.
+  //    This ensures the exact same image is used when the user approves and posts to LinkedIn.
   if (prefs?.approvalMode) {
+    const autoImage = prefs?.autoImage ?? true
+    const imgStyle = prefs?.imageStyle ?? 'quote_card'
+    let pendingImageUrl: string | null = null
+    let pendingStockPhotoUrl: string | null = null
+    let imageCreditsCost = 0
+
+    if (autoImage) {
+      if (imgStyle === 'stock_photo') {
+        const stockResult = await fetchStockPhoto(topic, niche)
+        if (stockResult) {
+          try {
+            const blob = await put(`post-images/pending-${Date.now()}.jpg`, stockResult.buffer, {
+              access: 'public',
+              contentType: 'image/jpeg',
+            })
+            pendingImageUrl = blob.url
+            pendingStockPhotoUrl = stockResult.url
+            imageCreditsCost = IMAGE_CREDITS
+          } catch (blobErr) {
+            console.warn('[worker] Blob upload failed for pending stock photo, posting text-only:', blobErr)
+          }
+        }
+      } else {
+        try {
+          const imgBuffer = await generatePostImage({
+            style: imgStyle as 'quote_card' | 'stats_card' | 'topic_card' | 'minimal_light' | 'minimal_dark' | 'list_card',
+            content,
+            topic,
+            niche,
+            displayName: account.displayName ?? user.name ?? 'Professional',
+            plan: (user.lifetimeFree ? 'pro' : user.plan) as 'free' | 'pro',
+            brandColor: prefs?.brandColor ?? undefined,
+            profilePictureUrl: account.profilePicture ?? undefined,
+            showProfilePic: prefs?.showProfilePicOnCard ?? false,
+          })
+          const blob = await put(`post-images/pending-${Date.now()}.png`, imgBuffer, {
+            access: 'public',
+            contentType: 'image/png',
+          })
+          pendingImageUrl = blob.url
+          imageCreditsCost = IMAGE_CREDITS
+        } catch (imgErr) {
+          console.warn('[worker] Image generation/upload failed for pending post, proceeding text-only:', imgErr)
+          pendingImageUrl = null
+          imageCreditsCost = 0
+        }
+      }
+    }
+
+    const totalCreditsToDeduct = creditsUsed + imageCreditsCost
     let creditsDeducted = false
     await prisma.$transaction(async (tx) => {
       // Atomic: check current DB credits (not stale JS snapshot) to prevent double-spend.
       // lifetimeFree users bypass the credit check entirely — their aiCreditsTotal is finite in DB.
       const result: number = user.lifetimeFree ? 1 : await tx.$executeRaw`
-        UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${creditsUsed}
-        WHERE id = ${userId} AND "aiCreditsUsed" + ${creditsUsed} <= "aiCreditsTotal"
+        UPDATE "User" SET "aiCreditsUsed" = "aiCreditsUsed" + ${totalCreditsToDeduct}
+        WHERE id = ${userId} AND "aiCreditsUsed" + ${totalCreditsToDeduct} <= "aiCreditsTotal"
       `
       if (result === 0) { await refundReservation(); return } // credits exhausted by a concurrent job
       creditsDeducted = true
@@ -191,18 +244,26 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
           topic,
           generatedContent: content,
           wordCount,
-          creditsUsed,
+          creditsUsed: totalCreditsToDeduct,
           status: 'pending_approval',
           aiModel: model as Parameters<typeof prisma.post.create>[0]['data']['aiModel'],
-          includeImage: prefs?.autoImage ?? true,
+          includeImage: autoImage && pendingImageUrl !== null,
           isCarousel: prefs?.carouselMode ?? false,
           imageStyle: (prefs?.imageStyle ?? null) as Parameters<typeof tx.post.create>[0]['data']['imageStyle'],
+          generatedImageUrl: pendingImageUrl,
+          stockPhotoUrl: pendingStockPhotoUrl,
           scheduledFor: new Date(),
         },
       })
     })
+
+    if (!creditsDeducted && pendingImageUrl) {
+      // Blob was uploaded but transaction failed (credits exhausted) — clean up the orphaned blob
+      del(pendingImageUrl).catch((err) => console.error('[worker] Failed to delete orphaned blob:', err))
+    }
+
     if (creditsDeducted) {
-      console.log(`[worker] Post saved for approval — user ${userId}`)
+      console.log(`[worker] Post saved for approval — user ${userId}${pendingImageUrl ? ' (with pre-generated image)' : ''}`)
       // Fire-and-forget — email failure must not fail the job
       if (user.email) {
         sendPostReadyEmail(user.email, user.name, topic).catch((err) =>
