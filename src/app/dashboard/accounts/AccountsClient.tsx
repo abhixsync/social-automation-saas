@@ -87,6 +87,7 @@ export default function AccountsClient({ accounts: initial, maxAccounts, plan, c
     else if (error === 'denied') toast.error('LinkedIn authorization was declined.')
     else if (error === 'invalid_state') toast.error('OAuth state mismatch. Please try again.')
     else if (error === 'token_exchange') toast.error('Failed to connect LinkedIn. Please try again.')
+    else if (error === 'account_claimed') toast.error('This LinkedIn account is already linked to a different Crescova account. Each LinkedIn profile can only be connected to one account.')
     else if (error) toast.error('Something went wrong. Please try again.')
     // Strip query params so toast doesn't re-fire on page refresh
     if (connected || error) router.replace('/dashboard/accounts')

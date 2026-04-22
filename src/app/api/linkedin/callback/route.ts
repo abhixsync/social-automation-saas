@@ -47,18 +47,16 @@ export async function GET(req: NextRequest) {
     // Fetch LinkedIn profile (sub = person ID)
     const userInfo = await getLinkedInUserInfo(tokenData.access_token)
 
-    // If another app user has this LinkedIn sub active, deactivate that record.
-    // The current user just proved ownership via OAuth, so ownership follows auth.
+    // One LinkedIn sub can only ever belong to one app user — block even if the
+    // other account soft-deleted it, so users cannot reuse a LinkedIn identity
+    // across multiple Crescova accounts.
     const conflictingAccount = await prisma.linkedInAccount.findFirst({
-      where: { sub: userInfo.sub, isActive: true, NOT: { userId: session.user.id } },
+      where: { sub: userInfo.sub, NOT: { userId: session.user.id } },
       select: { id: true },
     })
     if (conflictingAccount) {
-      console.warn('[linkedin/callback] transferring sub from another user — sub:', userInfo.sub, 'new owner:', session.user.id)
-      await prisma.linkedInAccount.update({
-        where: { id: conflictingAccount.id },
-        data: { isActive: false },
-      })
+      console.error('[linkedin/callback] account_claimed — sub:', userInfo.sub, 'attempted by userId:', session.user.id)
+      return NextResponse.redirect(`${appUrl}/dashboard/accounts?error=account_claimed`)
     }
 
     // Encrypt and store the token
