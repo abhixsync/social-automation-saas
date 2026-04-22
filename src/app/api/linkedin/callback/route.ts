@@ -25,15 +25,18 @@ export async function GET(req: NextRequest) {
   // Verify CSRF state
   const storedState = req.cookies.get('li_oauth_state')?.value
   if (!state || !storedState || state !== storedState) {
+    console.error('[linkedin/callback] invalid_state — param:', state, 'cookie:', storedState)
     return NextResponse.redirect(`${appUrl}/dashboard/accounts?error=invalid_state`)
   }
 
   if (!code) {
+    console.error('[linkedin/callback] no_code — params:', Object.fromEntries(req.nextUrl.searchParams))
     return NextResponse.redirect(`${appUrl}/dashboard/accounts?error=no_code`)
   }
 
   const session = await auth()
   if (!session?.user?.id) {
+    console.error('[linkedin/callback] no session — redirecting to login')
     return NextResponse.redirect(`${appUrl}/auth/login`)
   }
 
@@ -51,6 +54,7 @@ export async function GET(req: NextRequest) {
       select: { id: true },
     })
     if (conflictingAccount) {
+      console.error('[linkedin/callback] account_claimed — sub:', userInfo.sub, 'userId:', session.user.id)
       return NextResponse.redirect(`${appUrl}/dashboard/accounts?error=account_claimed`)
     }
 
