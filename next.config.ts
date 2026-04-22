@@ -10,7 +10,7 @@ const securityHeaders = [
   {
     key: 'Content-Security-Policy',
     value:
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.licdn.com https://*.public.blob.vercel-storage.com https://images.pexels.com https://lh3.googleusercontent.com; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self';",
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.licdn.com https://*.public.blob.vercel-storage.com https://images.pexels.com https://lh3.googleusercontent.com; connect-src 'self' https://www.linkedin.com; font-src 'self'; object-src 'none'; base-uri 'self';",
   },
 ]
 

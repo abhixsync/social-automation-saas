@@ -165,12 +165,12 @@ export default async function DashboardPage() {
                     )}
                   </div>
                   {!step.done && (
-                    <Link
+                    <a
                       href={step.href}
                       className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 flex-shrink-0"
                     >
                       {step.cta} <ArrowRight className="w-3 h-3" />
-                    </Link>
+                    </a>
                   )}
                 </div>
               ))}
