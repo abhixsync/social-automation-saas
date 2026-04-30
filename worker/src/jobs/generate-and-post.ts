@@ -7,6 +7,7 @@ import { generatePostImage } from '../lib/image-gen.js'
 import { generateCarouselSlides } from '../lib/carousel-gen.js'
 import { pngsToPdf } from '../lib/pdf.js'
 import { fetchStockPhoto } from '../lib/pexels.js'
+import { generateAiImage } from '../lib/ai-image.js'
 import { wordsToCredits, IMAGE_CREDITS, CAROUSEL_CREDITS } from '../lib/credits.js'
 import { sendPostReadyEmail } from '../lib/email.js'
 
@@ -199,6 +200,19 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
             console.warn('[worker] Blob upload failed for pending stock photo, posting text-only:', blobErr)
           }
         }
+      } else if (imgStyle === 'ai_generated') {
+        try {
+          const { buffer: imgBuffer, contentType } = await generateAiImage(topic, niche)
+          const ext = contentType.split('/')[1] ?? 'jpg'
+          const blob = await put(`post-images/pending-${Date.now()}.${ext}`, imgBuffer, {
+            access: 'public',
+            contentType,
+          })
+          pendingImageUrl = blob.url
+          imageCreditsCost = IMAGE_CREDITS
+        } catch (imgErr) {
+          console.warn('[worker] AI image generation failed for pending post, proceeding text-only:', imgErr)
+        }
       } else {
         try {
           const imgBuffer = await generatePostImage({
@@ -291,6 +305,20 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
         stockPhotoUrl = stockResult.url
       } else {
         console.warn(`[worker] Pexels returned no photo, falling back to text-only`)
+      }
+    } else if (imgStyle === 'ai_generated') {
+      try {
+        const { buffer, contentType } = await generateAiImage(topic, niche)
+        imageBuffer = buffer
+        const ext = contentType.split('/')[1] ?? 'jpg'
+        const blob = await put(`post-images/ai-${Date.now()}.${ext}`, buffer, {
+          access: 'public',
+          contentType,
+        })
+        stockPhotoUrl = blob.url // stored for dashboard display after publish
+      } catch (imgErr) {
+        console.warn(`[worker] AI image generation failed, falling back to text-only:`, imgErr)
+        imageBuffer = null
       }
     } else {
       try {
@@ -396,6 +424,7 @@ export async function generateAndPost(job: Job<JobData>): Promise<void> {
             includeImage: imageBuffer !== null,
             isCarousel: useCarousel,
             imageStyle: imageBuffer ? ((prefs?.imageStyle ?? 'quote_card') as Parameters<typeof prisma.post.create>[0]['data']['imageStyle']) : null,
+            stockPhotoUrl: stockPhotoUrl,
             publishedAt: new Date(),
           },
         })

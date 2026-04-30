@@ -99,6 +99,17 @@ const IMAGE_STYLES = [
       </div>
     ),
   },
+  {
+    value: 'ai_generated',
+    label: 'AI Generated',
+    description: 'AI-generated image based on your post topic (Pollinations.ai)',
+    preview: (
+      <div className="w-full h-20 rounded-md bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center p-3 gap-2">
+        <svg className="w-6 h-6 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+        <p className="text-white text-xs font-semibold">AI-generated image</p>
+      </div>
+    ),
+  },
 ]
 
 const TONES = [

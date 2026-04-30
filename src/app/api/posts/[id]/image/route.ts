@@ -72,12 +72,28 @@ export async function GET(
     return NextResponse.redirect(post.generatedImageUrl)
   }
 
+  // AI-generated: serve the Blob URL stored at post time; fall back to quote_card if none stored
+  if (post.imageStyle === 'ai_generated') {
+    if (post.stockPhotoUrl) {
+      try {
+        const parsed = new URL(post.stockPhotoUrl)
+        if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.public.blob.vercel-storage.com')) {
+          return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 })
+        }
+      } catch {
+        return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 })
+      }
+      return NextResponse.redirect(post.stockPhotoUrl)
+    }
+    // No stored URL — fall through and render a quote_card as fallback
+  }
+
   const account = await prisma.linkedInAccount.findUnique({
     where: { id: post.linkedInAccountId },
     select: { displayName: true, profilePicture: true },
   })
 
-  const style = (post.imageStyle ?? 'quote_card') as ImageStyle
+  const style = (post.imageStyle === 'ai_generated' ? 'quote_card' : (post.imageStyle ?? 'quote_card')) as ImageStyle
   const niche = prefs?.niche ?? 'tech professional'
 
   // Stock photo: use stored URL for consistency (same photo in preview and after publish),
